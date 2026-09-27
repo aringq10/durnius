@@ -1,3 +1,6 @@
 <Solution>
     <Project Path="src/Durnius.Web/Durnius.Web.csproj" />
+    <Project Path="docker-compose.dcproj">
+        <Build />
+    </Project>
 </Solution>
