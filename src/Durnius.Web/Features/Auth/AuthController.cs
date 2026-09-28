@@ -8,7 +8,11 @@ namespace Durnius.Web.Features.Auth;
 
 public class AuthController : Controller
 {
-    private static readonly List<(string Username, string Password)> Users = new();
+    private static readonly List<(string Username, string Password)> Users = new()
+    {
+        ("vilniaus", "vandenys")
+    };
+
     private static readonly object UsersLock = new();
 
     [HttpGet("/login")]
