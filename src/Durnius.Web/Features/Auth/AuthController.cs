@@ -15,6 +15,11 @@ public class AuthController : Controller
     [AllowAnonymous]
     public IActionResult Login(string? returnUrl = null)
     {
+        if (RedirectIfAuthenticated() is { } redirect)
+        {
+            return redirect;
+        }
+
         ViewData["ReturnUrl"] = returnUrl;
         return View(new LoginViewModel { ReturnUrl = returnUrl });
     }
@@ -24,6 +29,11 @@ public class AuthController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Login(LoginViewModel model)
     {
+        if (RedirectIfAuthenticated() is { } redirect)
+        {
+            return redirect;
+        }
+
         if (!ModelState.IsValid)
         {
             return View(model);
@@ -56,6 +66,11 @@ public class AuthController : Controller
     [AllowAnonymous]
     public IActionResult Register()
     {
+        if (RedirectIfAuthenticated() is { } redirect)
+        {
+            return redirect;
+        }
+
         return View(new RegisterViewModel());
     }
 
@@ -64,6 +79,11 @@ public class AuthController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Register(RegisterViewModel model)
     {
+        if (RedirectIfAuthenticated() is { } redirect)
+        {
+            return redirect;
+        }
+
         if (!ModelState.IsValid)
         {
             return View(model);
@@ -83,6 +103,13 @@ public class AuthController : Controller
         await SignInUserAsync(model.Username, isPersistent: false);
 
         return RedirectToAction("Index", "Lobby");
+    }
+
+    private IActionResult? RedirectIfAuthenticated()
+    {
+        return User.Identity?.IsAuthenticated == true
+            ? RedirectToAction("Index", "Lobby")
+            : null;
     }
 
     private async Task SignInUserAsync(string username, bool isPersistent)
