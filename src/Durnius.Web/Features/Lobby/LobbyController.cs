@@ -1,11 +1,11 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Durnius.Web.Features.Lobby;
 
-[Route("lobby")]
 public class LobbyController : Controller
 {
-    [HttpGet]
+    [HttpGet("/lobby")]
     public IActionResult Index()
     {
         return View();

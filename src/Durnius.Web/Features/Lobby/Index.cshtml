@@ -1,2 +1,11 @@
-﻿<h1>Lobby Feature</h1>
+﻿@{
+    ViewData["Title"] = "Lobby";
+    Layout = "_Layout";
+}
+
+<h1>Lobby</h1>
 <p>Welcome to the lobby!</p>
+
+<form asp-controller="Auth" asp-action="Logout" method="post">
+    <button type="submit">Log Out</button>
+</form>
