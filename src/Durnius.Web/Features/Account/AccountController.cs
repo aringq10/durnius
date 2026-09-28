@@ -4,9 +4,9 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Durnius.Web.Features.Auth;
+namespace Durnius.Web.Features.Account;
 
-public class AuthController : Controller
+public class AccountController : Controller
 {
     private static readonly List<(string Username, string Password)> Users = new()
     {
@@ -147,6 +147,6 @@ public class AuthController : Controller
     public async Task<IActionResult> Logout()
     {
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-        return RedirectToAction("Login", "Auth");
+        return RedirectToAction("Login", "Account");
     }
 }

@@ -1,14 +1,16 @@
-@model Durnius.Web.Features.Auth.RegisterViewModel
+@model Durnius.Web.Features.Account.LoginViewModel
 
 @{
-    ViewData["Title"] = "Register";
+    ViewData["Title"] = "Log In";
     Layout = "_Layout";
 }
 
 <div class="card">
-    <h2>Register</h2>
+    <h2>Log In</h2>
 
-    <form asp-action="Register" method="post">
+    <form asp-action="Login" method="post">
+        <input type="hidden" asp-for="ReturnUrl" />
+
         <div asp-validation-summary="ModelOnly" class="error"></div>
 
         <div class="field">
@@ -23,10 +25,16 @@
             <span asp-validation-for="Password" class="error"></span>
         </div>
 
-        <button type="submit">Register</button>
+        <div class="field">
+            <label>
+                <input asp-for="RememberMe" /> @Html.DisplayNameFor(m => m.RememberMe)
+            </label>
+        </div>
+
+        <button type="submit">Log In</button>
     </form>
 
     <p class="links">
-        Already have an account? <a asp-action="Login">Log In</a>
+        No account yet? <a asp-action="Register">Register</a>
     </p>
 </div>

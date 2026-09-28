@@ -1,8 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Durnius.Web.Features.Auth;
+namespace Durnius.Web.Features.Account;
 
-public class LoginViewModel
+public class RegisterViewModel
 {
     [Required]
     public string Username { get; set; } = string.Empty;
@@ -10,9 +10,4 @@ public class LoginViewModel
     [Required]
     [DataType(DataType.Password)]
     public string Password { get; set; } = string.Empty;
-
-    [Display(Name = "Remember Me")]
-    public bool RememberMe { get; set; }
-
-    public string? ReturnUrl { get; set; }
 }
