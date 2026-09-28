@@ -7,8 +7,7 @@ ASP.NET Core (.NET 10) app for Durnius.
 ```
 Engines/            # Game rule engines, one per game we support
 Features/
-  Auth/             # Login, registration, tokens
+  Account/          # Login, registration, user info
   Lobby/            # Main screen players see and navigate
   Multiplayer/      # SignalR engine
-  Profile/          # User info and match history
 ```
