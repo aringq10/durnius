@@ -17,7 +17,7 @@ public class GameLogic
         while (deck.Count() > 0)
         {
             Card card = deck.DrawCard();
-            if(card.Suit == Suit.Hearts || card.Suit == Suit.Diamonds)
+            if(card.Suit == Suit.hearts || card.Suit == Suit.diamonds)
             {
                 player1.AddCard(card);
             }
