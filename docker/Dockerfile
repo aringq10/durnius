@@ -1,29 +1,29 @@
-# See https://aka.ms/customizecontainer to learn how to customize your debug container and how Visual Studio uses this Dockerfile to build your images for faster debugging.
+# syntax=docker/dockerfile:1
 
-# This stage is used when running from VS in fast mode (Default for Debug configuration)
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
-USER $APP_UID
-WORKDIR /app
-EXPOSE 8080
-
-
-# This stage is used to build the service project
+# ---- build stage: SDK image, compiles and publishes ----
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
-ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["src/Durnius.Web/Durnius.Web.csproj", "src/Durnius.Web/"]
-RUN dotnet restore "./src/Durnius.Web/Durnius.Web.csproj"
-COPY . .
-WORKDIR "/src/src/Durnius.Web"
-RUN dotnet build "./Durnius.Web.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
-# This stage is used to publish the service project to be copied to the final stage
-FROM build AS publish
-ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./Durnius.Web.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+# Copy only the project file first so the restore layer stays cached
+# until dependencies change (not on every source edit).
+COPY src/Durnius.Web/Durnius.Web.csproj src/Durnius.Web/
+RUN dotnet restore src/Durnius.Web/Durnius.Web.csproj
 
-# This stage is used in production or when running from VS in regular mode (Default when not using the Debug configuration)
-FROM base AS final
+# Now copy the source and publish without re-restoring.
+COPY src/Durnius.Web/ src/Durnius.Web/
+RUN dotnet publish src/Durnius.Web/Durnius.Web.csproj \
+    -c Release \
+    -o /app/publish \
+    --no-restore
+
+# ---- final stage: ASP.NET runtime only, no SDK or source ----
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
-COPY --from=publish /app/publish .
+COPY --from=build /app/publish .
+
+# Run as the non-root "app" user built into the official images.
+USER $APP_UID
+
+# Official .NET images listen on 8080 by default.
+EXPOSE 8080
 ENTRYPOINT ["dotnet", "Durnius.Web.dll"]
