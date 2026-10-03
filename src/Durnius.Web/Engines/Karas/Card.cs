@@ -1,3 +1,5 @@
+namespace Durnius.Web.Engines.Karas;
+
 public enum Suit
 {
     hearts,
