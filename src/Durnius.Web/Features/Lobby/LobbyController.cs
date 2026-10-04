@@ -3,11 +3,12 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Durnius.Web.Features.Lobby;
 
-public class LobbyController : Controller
+[ApiController]
+public class LobbyController : ControllerBase
 {
     [HttpGet("/lobby")]
     public IActionResult Index()
     {
-        return View();
+        return Ok(new { username = User.Identity?.Name });
     }
 }
