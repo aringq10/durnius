@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
@@ -6,7 +7,8 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Durnius.Web.Features.Account;
 
-public class AccountController : Controller
+[ApiController]
+public class AccountController(IAntiforgery antiforgery) : ControllerBase
 {
     private static readonly List<(string Username, string Password)> Users = new()
     {
@@ -17,30 +19,15 @@ public class AccountController : Controller
 
     [HttpGet("/login")]
     [AllowAnonymous]
-    public IActionResult Login(string? returnUrl = null)
-    {
-        if (RedirectIfAuthenticated() is { } redirect)
-        {
-            return redirect;
-        }
-
-        ViewData["ReturnUrl"] = returnUrl;
-        return View(new LoginViewModel { ReturnUrl = returnUrl });
-    }
+    public IActionResult Login() => AntiforgeryToken();
 
     [HttpPost("/login")]
     [AllowAnonymous]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Login(LoginViewModel model)
+    public async Task<IActionResult> Login([FromBody] LoginViewModel model)
     {
-        if (RedirectIfAuthenticated() is { } redirect)
+        if (!await antiforgery.IsRequestValidAsync(HttpContext))
         {
-            return redirect;
-        }
-
-        if (!ModelState.IsValid)
-        {
-            return View(model);
+            return BadRequest(new { error = "antiforgery_validation_failed" });
         }
 
         bool isValidUser;
@@ -52,53 +39,37 @@ public class AccountController : Controller
 
         if (!isValidUser)
         {
-            ModelState.AddModelError(string.Empty, "Invalid username or password.");
-            return View(model);
+            return Unauthorized(new { error = "Invalid username or password." });
         }
 
         await SignInUserAsync(model.Username, model.RememberMe);
 
-        if (!string.IsNullOrEmpty(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
+        return Ok(new
         {
-            return Redirect(model.ReturnUrl);
-        }
-
-        return RedirectToAction("Index", "Lobby");
+            username = model.Username,
+            authenticated = true,
+            requestToken = CreateRequestToken()
+        });
     }
 
     [HttpGet("/register")]
     [AllowAnonymous]
-    public IActionResult Register()
-    {
-        if (RedirectIfAuthenticated() is { } redirect)
-        {
-            return redirect;
-        }
-
-        return View(new RegisterViewModel());
-    }
+    public IActionResult Register() => AntiforgeryToken();
 
     [HttpPost("/register")]
     [AllowAnonymous]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Register(RegisterViewModel model)
+    public async Task<IActionResult> Register([FromBody] RegisterViewModel model)
     {
-        if (RedirectIfAuthenticated() is { } redirect)
+        if (!await antiforgery.IsRequestValidAsync(HttpContext))
         {
-            return redirect;
-        }
-
-        if (!ModelState.IsValid)
-        {
-            return View(model);
+            return BadRequest(new { error = "antiforgery_validation_failed" });
         }
 
         lock (UsersLock)
         {
             if (Users.Any(u => u.Username == model.Username))
             {
-                ModelState.AddModelError(nameof(model.Username), "Username already taken.");
-                return View(model);
+                return Conflict(new { error = "Username already taken." });
             }
 
             Users.Add((model.Username, model.Password));
@@ -106,15 +77,17 @@ public class AccountController : Controller
 
         await SignInUserAsync(model.Username, isPersistent: false);
 
-        return RedirectToAction("Index", "Lobby");
+        return Created("/lobby", new
+        {
+            username = model.Username,
+            authenticated = true,
+            requestToken = CreateRequestToken()
+        });
     }
 
-    private IActionResult? RedirectIfAuthenticated()
-    {
-        return User.Identity?.IsAuthenticated == true
-            ? RedirectToAction("Index", "Lobby")
-            : null;
-    }
+    private IActionResult AntiforgeryToken() => Ok(new { requestToken = CreateRequestToken() });
+
+    private string CreateRequestToken() => antiforgery.GetAndStoreTokens(HttpContext).RequestToken!;
 
     private async Task SignInUserAsync(string username, bool isPersistent)
     {
@@ -143,10 +116,14 @@ public class AccountController : Controller
     }
 
     [HttpPost("/logout")]
-    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Logout()
     {
+        if (!await antiforgery.IsRequestValidAsync(HttpContext))
+        {
+            return BadRequest(new { error = "antiforgery_validation_failed" });
+        }
+
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-        return RedirectToAction("Login", "Account");
+        return Ok(new { authenticated = false });
     }
 }
