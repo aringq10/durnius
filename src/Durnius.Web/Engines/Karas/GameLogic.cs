@@ -1,3 +1,5 @@
+namespace Durnius.Web.Engines.Karas;
+
 public class GameLogic
 {
     private Player player1;

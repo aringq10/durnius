@@ -1,3 +1,5 @@
+namespace Durnius.Web.Engines.Karas;
+
 public class Player
 {
     private List<Card> cards = new();

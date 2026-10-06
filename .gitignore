@@ -204,6 +204,7 @@ _pkginfo.txt
 !*.[Cc]ache/
 
 # Others
+src/Durnius.Web/bin\\Debug/
 ClientBin/
 ~$*
 *~
