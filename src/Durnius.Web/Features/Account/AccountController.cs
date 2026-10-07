@@ -3,17 +3,21 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Durnius.Web.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace Durnius.Web.Features.Account;
 
 public class AccountController : Controller
 {
-    private static readonly List<(string Username, string Password)> Users = new()
-    {
-        ("vilniaus", "vandenys")
-    };
 
-    private static readonly object UsersLock = new();
+    private readonly AppDbContext _db;
+    
+    public AccountController(AppDbContext db)
+    {
+        _db = db;
+    }
+
 
     [HttpGet("/login")]
     [AllowAnonymous]
@@ -43,20 +47,16 @@ public class AccountController : Controller
             return View(model);
         }
 
-        bool isValidUser;
+        var user = await _db.Users.SingleOrDefaultAsync(u => u.Username == model.Username);
 
-        lock (UsersLock)
-        {
-            isValidUser = Users.Any(u => u.Username == model.Username && u.Password == model.Password);
-        }
-
-        if (!isValidUser)
+        if (user is null || !BCrypt.Net.BCrypt.Verify(model.Password, user.PasswordHash))
         {
             ModelState.AddModelError(string.Empty, "Invalid username or password.");
             return View(model);
         }
 
-        await SignInUserAsync(model.Username, model.RememberMe);
+        await SignInUserAsync(user.Username, model.RememberMe);
+
 
         if (!string.IsNullOrEmpty(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
         {
@@ -93,21 +93,28 @@ public class AccountController : Controller
             return View(model);
         }
 
-        lock (UsersLock)
+            
+        if (await _db.Users.AnyAsync(u => u.Username == model.Username))
         {
-            if (Users.Any(u => u.Username == model.Username))
-            {
-                ModelState.AddModelError(nameof(model.Username), "Username already taken.");
-                return View(model);
-            }
-
-            Users.Add((model.Username, model.Password));
+            ModelState.AddModelError(nameof(model.Username), "Username already taken.");
+            return View(model);
         }
+
+        var user = new User
+        {
+            Username = model.Username,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password)
+        };
+
+        _db.Users.Add(user);
+        await _db.SaveChangesAsync();
 
         await SignInUserAsync(model.Username, isPersistent: false);
 
         return RedirectToAction("Index", "Lobby");
     }
+
+
 
     private IActionResult? RedirectIfAuthenticated()
     {
