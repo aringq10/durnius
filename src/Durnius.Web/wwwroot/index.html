@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f2f5f1">
+    <title>Durnius | API console</title>
+    <link rel="stylesheet" href="/styles.css">
+    <script src="/app.js" defer></script>
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" href="/" aria-label="Durnius API console">
+            <span class="brand-mark">D</span>
+            <span>Durnius <span class="brand-muted">/ console</span></span>
+        </a>
+        <div class="connection">
+            <span class="connection-dot" id="connection-dot"></span>
+            <span id="connection-label">Connecting</span>
+            <span class="origin" id="origin-label"></span>
+        </div>
+    </header>
+
+    <main>
+        <div class="page-heading">
+            <div>
+                <p class="eyebrow">LOCAL API WORKSPACE</p>
+                <h1>Backend console</h1>
+            </div>
+            <div class="session-state" id="session-state" aria-live="polite">
+                <span class="session-indicator"></span>
+                <span id="session-label">Checking session</span>
+            </div>
+        </div>
+
+        <div class="console-grid">
+            <section class="request-panel" aria-labelledby="request-heading">
+                <div class="panel-heading">
+                    <div>
+                        <p class="eyebrow">IDENTITY</p>
+                        <h2 id="request-heading">Account</h2>
+                    </div>
+                    <span class="method-tag">POST</span>
+                </div>
+
+                <div class="mode-switch" role="tablist" aria-label="Account action">
+                    <button class="mode-button is-active" id="login-tab" type="button" role="tab" aria-selected="true" aria-controls="account-form" data-mode="login">Sign in</button>
+                    <button class="mode-button" id="register-tab" type="button" role="tab" aria-selected="false" aria-controls="account-form" data-mode="register">Create account</button>
+                </div>
+
+                <form id="account-form">
+                    <label for="username">Username</label>
+                    <input id="username" name="username" type="text" autocomplete="username" required>
+
+                    <label for="password">Password</label>
+                    <input id="password" name="password" type="password" autocomplete="current-password" required>
+
+                    <label class="remember-row" id="remember-row">
+                        <input id="remember-me" name="rememberMe" type="checkbox">
+                        <span>Keep me signed in</span>
+                    </label>
+
+                    <button class="primary-button" id="submit-button" type="submit" disabled>
+                        <span id="submit-label">Sign in</span>
+                        <span aria-hidden="true">↗</span>
+                    </button>
+                </form>
+
+                <div class="account-actions">
+                    <button class="text-button" id="lobby-button" type="button">Check lobby <span aria-hidden="true">↗</span></button>
+                    <button class="text-button" id="logout-button" type="button" disabled>Sign out <span aria-hidden="true">↗</span></button>
+                </div>
+
+                <div class="token-state">
+                    <span class="token-icon" aria-hidden="true">◈</span>
+                    <span><strong>Request token</strong><small id="token-label">Loading from /antiforgerytoken</small></span>
+                    <span class="token-status" id="token-status">WAITING</span>
+                </div>
+            </section>
+
+            <section class="response-panel" aria-labelledby="response-heading">
+                <div class="response-topline">
+                    <div>
+                        <p class="eyebrow">LATEST EXCHANGE</p>
+                        <h2 id="response-heading">Response</h2>
+                    </div>
+                    <span class="response-code" id="response-code">--</span>
+                </div>
+                <div class="response-route">
+                    <span class="response-method" id="response-method">GET</span>
+                    <code id="response-route">/antiforgerytoken</code>
+                    <span class="response-time" id="response-time">-- ms</span>
+                </div>
+                <pre class="response-body" id="response-body" aria-live="polite"><code>Waiting for API…</code></pre>
+                <div class="activity-heading">
+                    <h3>Activity</h3>
+                    <button class="clear-button" id="clear-activity" type="button">Clear</button>
+                </div>
+                <ol class="activity-list" id="activity-list" aria-live="polite"></ol>
+            </section>
+        </div>
+        <footer><span>API origin</span><code id="footer-origin"></code><span class="footer-divider"></span><span>Cookie session · CSRF protected</span></footer>
+    </main>
+</body>
+</html>

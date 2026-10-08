@@ -7,7 +7,7 @@ namespace Durnius.Web.Features.Lobby;
 public class LobbyController : ControllerBase
 {
     [HttpGet("/lobby")]
-    public IActionResult Index()
+    public IActionResult GetLobby()
     {
         return Ok(new { username = User.Identity?.Name });
     }

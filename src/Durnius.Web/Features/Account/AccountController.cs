@@ -17,75 +17,57 @@ public class AccountController(IAntiforgery antiforgery) : ControllerBase
 
     private static readonly object UsersLock = new();
 
-    [HttpGet("/login")]
+    [HttpGet("/antiforgerytoken")]
     [AllowAnonymous]
-    public IActionResult Login() => AntiforgeryToken();
+    public IActionResult GetAntiforgeryToken() => Ok(new { requestToken = CreateRequestToken() });
 
     [HttpPost("/login")]
     [AllowAnonymous]
-    public async Task<IActionResult> Login([FromBody] LoginViewModel model)
+    public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
-        if (!await antiforgery.IsRequestValidAsync(HttpContext))
-        {
-            return BadRequest(new { error = "antiforgery_validation_failed" });
-        }
-
         bool isValidUser;
 
         lock (UsersLock)
         {
-            isValidUser = Users.Any(u => u.Username == model.Username && u.Password == model.Password);
+            isValidUser = Users.Any(u => u.Username == request.Username && u.Password == request.Password);
         }
 
         if (!isValidUser)
         {
-            return Unauthorized(new { error = "Invalid username or password." });
+            return Unauthorized(AccountErrorResponse.From(AccountErrorCode.InvalidCredentials));
         }
 
-        await SignInUserAsync(model.Username, model.RememberMe);
+        await SignInUserAsync(request.Username, request.RememberMe);
 
         return Ok(new
         {
-            username = model.Username,
-            authenticated = true,
+            username = request.Username,
             requestToken = CreateRequestToken()
         });
     }
-
-    [HttpGet("/register")]
-    [AllowAnonymous]
-    public IActionResult Register() => AntiforgeryToken();
 
     [HttpPost("/register")]
     [AllowAnonymous]
-    public async Task<IActionResult> Register([FromBody] RegisterViewModel model)
+    public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
-        if (!await antiforgery.IsRequestValidAsync(HttpContext))
-        {
-            return BadRequest(new { error = "antiforgery_validation_failed" });
-        }
-
         lock (UsersLock)
         {
-            if (Users.Any(u => u.Username == model.Username))
+            if (Users.Any(u => u.Username == request.Username))
             {
-                return Conflict(new { error = "Username already taken." });
+                return Conflict(AccountErrorResponse.From(AccountErrorCode.UsernameAlreadyTaken));
             }
 
-            Users.Add((model.Username, model.Password));
+            Users.Add((request.Username, request.Password));
         }
 
-        await SignInUserAsync(model.Username, isPersistent: false);
+        await SignInUserAsync(request.Username, isPersistent: false);
 
         return Created("/lobby", new
         {
-            username = model.Username,
-            authenticated = true,
+            username = request.Username,
             requestToken = CreateRequestToken()
         });
     }
-
-    private IActionResult AntiforgeryToken() => Ok(new { requestToken = CreateRequestToken() });
 
     private string CreateRequestToken() => antiforgery.GetAndStoreTokens(HttpContext).RequestToken!;
 
@@ -113,17 +95,14 @@ public class AccountController(IAntiforgery antiforgery) : ControllerBase
             CookieAuthenticationDefaults.AuthenticationScheme,
             claimsPrincipal,
             authProperties);
+        HttpContext.User = claimsPrincipal;
     }
 
     [HttpPost("/logout")]
     public async Task<IActionResult> Logout()
     {
-        if (!await antiforgery.IsRequestValidAsync(HttpContext))
-        {
-            return BadRequest(new { error = "antiforgery_validation_failed" });
-        }
-
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-        return Ok(new { authenticated = false });
+        HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
+        return Ok(new { requestToken = CreateRequestToken() });
     }
 }
