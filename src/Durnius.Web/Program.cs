@@ -45,6 +45,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<IAccountService, AccountService>();
 
 if (builder.Environment.IsDevelopment())
 {
