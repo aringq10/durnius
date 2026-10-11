@@ -1,0 +1,48 @@
+body {
+  font-family: system-ui, sans-serif;
+  margin: 2rem;
+}
+
+.card {
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.field {
+  margin-bottom: 1rem;
+}
+
+.field input[type="text"],
+.field input[type="password"] {
+  width: 100%;
+  padding: 0.5rem;
+  box-sizing: border-box;
+}
+
+.error {
+  margin: 0 0 1rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #f1aeb5;
+  border-radius: 6px;
+  background: #f8d7da;
+  color: #842029;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.error ul {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.error li + li {
+  margin-top: 0.25rem;
+}
+
+button {
+  padding: 0.5rem 1rem;
+}
+
+.links {
+  margin-top: 1rem;
+}
