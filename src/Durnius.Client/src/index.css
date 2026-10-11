@@ -1,0 +1,32 @@
+body {
+  font-family: system-ui, sans-serif;
+  margin: 2rem;
+}
+
+.card {
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.field {
+  margin-bottom: 1rem;
+}
+
+.field input[type="text"],
+.field input[type="password"] {
+  width: 100%;
+  padding: 0.5rem;
+  box-sizing: border-box;
+}
+
+.error {
+  color: red;
+}
+
+button {
+  padding: 0.5rem 1rem;
+}
+
+.links {
+  margin-top: 1rem;
+}

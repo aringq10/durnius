@@ -13,13 +13,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
 
-builder.Services.AddControllersWithViews()
-    .AddRazorOptions(options =>
-    {
-        options.ViewLocationFormats.Clear();
-        options.ViewLocationFormats.Add("/Features/{1}/{0}.cshtml");
-        options.ViewLocationFormats.Add("/Features/Shared/{0}.cshtml");
-    });
+builder.Services.AddControllers();
 
 var jwtKey = builder.Configuration["Jwt:Key"]
     ?? throw new InvalidOperationException("Jwt:Key is not configured.");
