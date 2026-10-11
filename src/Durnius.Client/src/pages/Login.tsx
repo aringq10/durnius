@@ -1,21 +1,30 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { errorMessage, postJson } from "../lib/api";
+import { errorMessages, postJson } from "../lib/api";
 import type { AuthResponse } from "../lib/api";
+import { validateCredentials } from "../lib/validation";
 import { useAuth } from "../auth/AuthContext";
+import FormErrors from "../components/FormErrors";
 
 export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const { storeToken } = useAuth();
   const navigate = useNavigate();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError(null);
+
+    const validationErrors = validateCredentials(username, password);
+    if (validationErrors.length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    setErrors([]);
     setSubmitting(true);
     try {
       const auth = await postJson<AuthResponse>("/login", {
@@ -25,10 +34,20 @@ export default function Login() {
       storeToken(auth.token);
       navigate("/lobby", { replace: true });
     } catch (err) {
-      setError(errorMessage(err));
+      setErrors(errorMessages(err));
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function handleUsernameChange(value: string) {
+    setUsername(value);
+    setErrors([]);
+  }
+
+  function handlePasswordChange(value: string) {
+    setPassword(value);
+    setErrors([]);
   }
 
   return (
@@ -43,7 +62,7 @@ export default function Login() {
             id="username"
             type="text"
             value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            onChange={(e) => handleUsernameChange(e.target.value)}
             autoComplete="username"
           />
         </div>
@@ -55,16 +74,12 @@ export default function Login() {
             id="password"
             type="password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => handlePasswordChange(e.target.value)}
             autoComplete="current-password"
           />
         </div>
 
-        {error && (
-          <div className="error" role="alert">
-            {error}
-          </div>
-        )}
+        <FormErrors errors={errors} />
 
         <button type="submit" disabled={submitting}>
           {submitting ? "Logging in..." : "Log In"}

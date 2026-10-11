@@ -63,6 +63,17 @@ export function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Something went wrong.";
 }
 
+/** Extracts the validation errors the API returned, if any. */
+export function errorMessages(error: unknown): string[] {
+  if (error instanceof ApiError) {
+    const body = error.body as ApiErrorBody | null;
+    if (Array.isArray(body?.errors) && body.errors.length > 0) {
+      return body.errors;
+    }
+  }
+  return [errorMessage(error)];
+}
+
 export function postJson<T>(
   path: string,
   data: unknown,
