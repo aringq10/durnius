@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getJson } from "../lib/api.js";
-import { useAuth } from "../auth/AuthContext.jsx";
+import { ApiError, errorMessage, getJson } from "../lib/api";
+import { useAuth } from "../auth/AuthContext";
 
 export default function Lobby() {
   const { token, logout } = useAuth();
   const navigate = useNavigate();
-  const [games, setGames] = useState([]);
-  const [error, setError] = useState(null);
+  const [games, setGames] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -15,19 +15,19 @@ export default function Lobby() {
     setLoading(true);
     setError(null);
 
-    getJson("/lobby", token)
+    getJson<string[]>("/lobby", token)
       .then((body) => {
         if (!cancelled) setGames(body);
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         if (cancelled) return;
-        if (err.status === 401) {
+        if (err instanceof ApiError && err.status === 401) {
           // Token missing, expired, or rejected: back to the login page.
           logout();
           navigate("/login", { replace: true });
           return;
         }
-        setError(err.message);
+        setError(errorMessage(err));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);

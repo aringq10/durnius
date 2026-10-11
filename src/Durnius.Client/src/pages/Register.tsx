@@ -1,26 +1,31 @@
 import { useState } from "react";
+import type { FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { postJson } from "../lib/api.js";
-import { useAuth } from "../auth/AuthContext.jsx";
+import { errorMessage, postJson } from "../lib/api";
+import type { AuthResponse } from "../lib/api";
+import { useAuth } from "../auth/AuthContext";
 
 export default function Register() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const { storeToken } = useAuth();
   const navigate = useNavigate();
 
-  async function handleSubmit(event) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
     setSubmitting(true);
     try {
-      const auth = await postJson("/register", { username, password });
+      const auth = await postJson<AuthResponse>("/register", {
+        username,
+        password,
+      });
       storeToken(auth.token);
       navigate("/lobby", { replace: true });
     } catch (err) {
-      setError(err.message);
+      setError(errorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -29,8 +34,6 @@ export default function Register() {
   return (
     <div className="card">
       <h2>Register</h2>
-
-      {error && <div className="error">{error}</div>}
 
       <form onSubmit={handleSubmit}>
         <div className="field">
@@ -56,6 +59,12 @@ export default function Register() {
             autoComplete="new-password"
           />
         </div>
+
+        {error && (
+          <div className="error" role="alert">
+            {error}
+          </div>
+        )}
 
         <button type="submit" disabled={submitting}>
           {submitting ? "Registering..." : "Register"}

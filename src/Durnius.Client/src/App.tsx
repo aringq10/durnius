@@ -1,15 +1,16 @@
 import { Navigate, Route, Routes } from "react-router-dom";
-import { useAuth } from "./auth/AuthContext.jsx";
-import Login from "./pages/Login.jsx";
-import Register from "./pages/Register.jsx";
-import Lobby from "./pages/Lobby.jsx";
+import type { ReactNode } from "react";
+import { useAuth } from "./auth/AuthContext";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Lobby from "./pages/Lobby";
 
 function Home() {
   const { isAuthenticated } = useAuth();
   return <Navigate to={isAuthenticated ? "/lobby" : "/login"} replace />;
 }
 
-function RequireAuth({ children }) {
+function RequireAuth({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
