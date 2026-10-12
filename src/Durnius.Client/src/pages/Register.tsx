@@ -27,7 +27,7 @@ export default function Register() {
     setErrors([]);
     setSubmitting(true);
     try {
-      const auth = await postJson<AuthResponse>("/register", {
+      const auth = await postJson<AuthResponse>("/api/register", {
         username,
         password,
       });
