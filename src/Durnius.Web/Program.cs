@@ -85,7 +85,9 @@ using (var scope = app.Services.CreateScope())
     await db.Database.MigrateAsync();
 }
 
+app.UseDefaultFiles();
 app.UseStaticFiles();
+
 app.UseRouting();
 
 if (app.Environment.IsDevelopment())
@@ -98,5 +100,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<LobbyHub>("/hubs/lobby");
+
+app.MapFallbackToFile("index.html");
 
 app.Run();
