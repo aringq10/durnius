@@ -16,7 +16,8 @@ at `VITE_API_URL` (default `http://localhost:8080`); copy `.env.example` to
 ## Scripts
 
 - `npm run dev` starts the dev server
-- `npm run build` type-checks and creates a production build in `dist/`
+- `npm run build` type-checks and emits a production build into
+  `../Durnius.Web/wwwroot`, where ASP.NET Core serves it
 - `npm run typecheck` type-checks without building
 - `npm run preview` serves the production build locally
 

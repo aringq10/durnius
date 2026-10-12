@@ -15,7 +15,7 @@ export default function Lobby() {
     setLoading(true);
     setError(null);
 
-    getJson<string[]>("/lobby", token)
+    getJson<string[]>("/api/lobby", token)
       .then((body) => {
         if (!cancelled) setGames(body);
       })

@@ -20,7 +20,7 @@ public class AccountController : ControllerBase
         _logger = logger;
     }
 
-    [HttpPost("/login")]
+    [HttpPost("/api/login")]
     [AllowAnonymous]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
@@ -34,7 +34,7 @@ public class AccountController : ControllerBase
         return ToActionResult(result);
     }
 
-    [HttpPost("/register")]
+    [HttpPost("/api/register")]
     [AllowAnonymous]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {

@@ -11,7 +11,7 @@ public class LobbyController : ControllerBase
     // order players see them in the lobby.
     private static readonly IReadOnlyList<string> Games = ["durnius", "karas", "lagaminas"];
 
-    [HttpGet("/lobby")]
+    [HttpGet("/api/lobby")]
     public IActionResult Index()
     {
         return Ok(Games);

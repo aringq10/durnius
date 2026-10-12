@@ -1,0 +1,36 @@
+# syntax=docker/dockerfile:1
+
+# ---- client dev: Vite dev server with HMR ----
+FROM node:26-alpine AS client
+WORKDIR /app
+
+COPY src/Durnius.Client/package.json src/Durnius.Client/package-lock.json ./
+COPY src/Durnius.Client/ ./
+
+EXPOSE 5173
+# Install deps only when they are missing.
+CMD ["sh", "-c", "[ -x node_modules/.bin/vite ] || npm ci; exec npm run dev -- --host 0.0.0.0"]
+
+# ---- backend dev: dotnet watch with hot reload ----
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS backend
+
+ARG UID=1000
+ARG GID=1000
+
+ENV HOME=/home/app \
+    DOTNET_CLI_HOME=/home/app \
+    NUGET_PACKAGES=/home/app/.nuget/packages \
+    DOTNET_USE_POLLING_FILE_WATCHER=1 \
+    ASPNETCORE_HTTP_PORTS=8080 \
+    DOTNET_NOLOGO=1
+RUN mkdir -p /home/app/.nuget/packages && chown -R ${UID}:${GID} /home/app
+
+WORKDIR /src
+# Restore at build time so NuGet packages are cached in the image; obj/ is
+# bind-mounted over this at runtime.
+COPY --chown=${UID}:${GID} src/Durnius.Web/Durnius.Web.csproj src/Durnius.Web/Directory.Build.props src/Durnius.Web/
+USER ${UID}:${GID}
+RUN dotnet restore src/Durnius.Web/Durnius.Web.csproj
+
+EXPOSE 8080
+ENTRYPOINT ["dotnet", "watch", "--non-interactive", "run", "--project", "src/Durnius.Web/Durnius.Web.csproj", "--no-launch-profile"]
