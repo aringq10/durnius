@@ -6,11 +6,6 @@ public class Deck
 
     public Deck()
     {
-        CreateDeck();
-    }
-
-    private void CreateDeck()
-    {
         foreach (Suit suit in Enum.GetValues<Suit>())
         {
             foreach (Value value in Enum.GetValues<Value>())

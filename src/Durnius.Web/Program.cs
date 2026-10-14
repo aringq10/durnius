@@ -1,9 +1,11 @@
 using System.Text;
-using Durnius.Web.Data;
-using Durnius.Web.Features.Account;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+
+using Durnius.Web.Data;
+using Durnius.Web.Features.Account;
+using Durnius.Web.Features.Multiplayer;
 
 // Default port the Vite dev server listens on.
 const string DevClientOrigin = "http://localhost:5173";
@@ -50,6 +52,10 @@ if (builder.Environment.IsDevelopment())
                   .AllowAnyMethod()));
 }
 
+builder.Services.AddSingleton<LobbyManager>();
+builder.Services.AddSingleton<MatchManager>();
+builder.Services.AddSignalR();
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
@@ -58,6 +64,7 @@ using (var scope = app.Services.CreateScope())
     await db.Database.MigrateAsync();
 }
 
+app.UseStaticFiles();
 app.UseRouting();
 
 if (app.Environment.IsDevelopment())
@@ -69,5 +76,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<LobbyHub>("/hubs/lobby");
 
 app.Run();
