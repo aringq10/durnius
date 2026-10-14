@@ -59,15 +59,18 @@ public class GameEngine
             return (null, null);
         }
 
-        player1Drawn = player1.DrawCard();
+        var drawn = player1.DrawCard();
+        player1Drawn = drawn;
         RoundResult? r = null;
 
         if (player1Drawn is not null && player2Drawn is not null)
         {
             r = PlayRound();
+            player1Drawn = null;
+            player2Drawn = null;
         }
 
-        return (player1Drawn, r);
+        return (drawn, r);
     }
 
     public (Card? Card, RoundResult? Result) DrawCardP2()
@@ -77,15 +80,18 @@ public class GameEngine
             return (null, null);
         }
 
-        player2Drawn = player2.DrawCard();
+        var drawn = player2.DrawCard();
+        player2Drawn = drawn;
         RoundResult? r = null;
 
         if (player1Drawn is not null && player2Drawn is not null)
         {
             r = PlayRound();
+            player1Drawn = null;
+            player2Drawn = null;
         }
 
-        return (player2Drawn, r);
+        return (drawn, r);
     }
 
     private RoundResult PlayRound()
