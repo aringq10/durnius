@@ -1,9 +1,12 @@
 using System.Text;
-using Durnius.Web.Data;
-using Durnius.Web.Features.Account;
+using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+
+using Durnius.Web.Data;
+using Durnius.Web.Features.Account;
+using Durnius.Web.Features.Multiplayer;
 
 // Default port the Vite dev server listens on.
 const string DevClientOrigin = "http://localhost:5173";
@@ -32,7 +35,26 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = builder.Configuration["Jwt:Audience"]
                 ?? throw new InvalidOperationException("Jwt:Audience is not configured."),
             ValidateLifetime = true,
-            ClockSkew = TimeSpan.Zero // Remove the default 5-minute tolerance.
+            ClockSkew = TimeSpan.Zero, // Remove the default 5-minute tolerance.
+            // Tokens store the username under the JWT "name" claim, which has no entry
+            // in the default inbound claim map, so Identity.Name would otherwise be null.
+            NameClaimType = JwtRegisteredClaimNames.Name
+        };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                {
+                    context.Token = accessToken;
+                }
+
+                return Task.CompletedTask;
+            }
         };
     });
 
@@ -47,8 +69,13 @@ if (builder.Environment.IsDevelopment())
         options.AddPolicy("DevClient", policy =>
             policy.WithOrigins(DevClientOrigin)
                   .AllowAnyHeader()
-                  .AllowAnyMethod()));
+                  .AllowAnyMethod()
+                  .AllowCredentials()));
 }
+
+builder.Services.AddSingleton<LobbyManager>();
+builder.Services.AddSingleton<MatchManager>();
+builder.Services.AddSignalR();
 
 var app = builder.Build();
 
@@ -58,6 +85,7 @@ using (var scope = app.Services.CreateScope())
     await db.Database.MigrateAsync();
 }
 
+app.UseStaticFiles();
 app.UseRouting();
 
 if (app.Environment.IsDevelopment())
@@ -69,5 +97,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<LobbyHub>("/hubs/lobby");
 
 app.Run();
