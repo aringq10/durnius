@@ -18,6 +18,7 @@ public enum Value
     seven,
     eight,
     nine,
+    ten,
     jack,
     queen,
     king,
