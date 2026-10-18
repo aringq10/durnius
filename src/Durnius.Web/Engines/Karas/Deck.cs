@@ -1,6 +1,8 @@
+using System.Collections;
+
 namespace Durnius.Web.Engines.Karas;
 
-public class Deck
+public class Deck : IEnumerable<Card>
 {
     private List<Card> cards = new();
 
@@ -41,4 +43,7 @@ public class Deck
     {
         return cards.Count;
     }
+    public IEnumerator<Card> GetEnumerator() => cards.GetEnumerator();
+
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }
