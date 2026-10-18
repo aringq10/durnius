@@ -16,6 +16,7 @@ export type CardValue =
   | "seven"
   | "eight"
   | "nine"
+  | "ten"
   | "jack"
   | "queen"
   | "king"
@@ -35,6 +36,7 @@ export const CARD_LABELS: Record<CardValue, string> = {
   seven: "7",
   eight: "8",
   nine: "9",
+  ten: "10",
   jack: "J",
   queen: "Q",
   king: "K",
