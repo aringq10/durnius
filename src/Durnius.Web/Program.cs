@@ -1,14 +1,8 @@
-using System.Text;
-using System.IdentityModel.Tokens.Jwt;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-
 using Durnius.Web.Data;
 using Durnius.Web.Features.Account;
 using Durnius.Web.Features.Multiplayer;
+using Microsoft.EntityFrameworkCore;
 
-// Default port the Vite dev server listens on.
 const string DevClientOrigin = "http://localhost:5173";
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,50 +12,10 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddControllers();
 
-var jwtKey = builder.Configuration["Jwt:Key"]
-    ?? throw new InvalidOperationException("Jwt:Key is not configured.");
-
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
-            ValidateIssuer = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"]
-                ?? throw new InvalidOperationException("Jwt:Issuer is not configured."),
-            ValidateAudience = true,
-            ValidAudience = builder.Configuration["Jwt:Audience"]
-                ?? throw new InvalidOperationException("Jwt:Audience is not configured."),
-            ValidateLifetime = true,
-            ClockSkew = TimeSpan.Zero, // Remove the default 5-minute tolerance.
-            // Tokens store the username under the JWT "name" claim, which has no entry
-            // in the default inbound claim map, so Identity.Name would otherwise be null.
-            NameClaimType = JwtRegisteredClaimNames.Name
-        };
-
-        options.Events = new JwtBearerEvents
-        {
-            OnMessageReceived = context =>
-            {
-                var accessToken = context.Request.Query["access_token"];
-                var path = context.HttpContext.Request.Path;
-
-                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
-                {
-                    context.Token = accessToken;
-                }
-
-                return Task.CompletedTask;
-            }
-        };
-    });
-
-builder.Services.AddAuthorization();
-
-builder.Services.AddScoped<ITokenService, TokenService>();
-builder.Services.AddScoped<IAccountService, AccountService>();
+builder.Services
+    .AddJwtAuthentication(builder.Configuration)
+    .AddAccountServices()
+    .AddMultiplayer();
 
 if (builder.Environment.IsDevelopment())
 {
@@ -72,10 +26,6 @@ if (builder.Environment.IsDevelopment())
                   .AllowAnyMethod()
                   .AllowCredentials()));
 }
-
-builder.Services.AddSingleton<LobbyManager>();
-builder.Services.AddSingleton<MatchManager>();
-builder.Services.AddSignalR();
 
 var app = builder.Build();
 
