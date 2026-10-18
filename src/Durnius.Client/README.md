@@ -24,4 +24,4 @@ at `VITE_API_URL` (default `http://localhost:8080`); copy `.env.example` to
 
 - `/login` — log in with an existing account
 - `/register` — create a new account
-- `/lobby` — protected; requires a valid stored JWT, otherwise redirects to `/login`. Lists the games returned by the API.
+- `/lobby` — protected; requires a valid stored JWT, otherwise redirects to `/login`. Joins the Karas matchmaking lobby over SignalR.

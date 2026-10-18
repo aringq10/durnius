@@ -46,3 +46,162 @@ button {
 .links {
   margin-top: 1rem;
 }
+
+.board {
+  display: flex;
+  align-items: flex-start;
+  gap: 2rem;
+  margin: 1rem 0;
+}
+
+.deck {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 90px;
+}
+
+.deck-name {
+  font-weight: 600;
+  text-align: center;
+}
+
+.deck-draw {
+  cursor: pointer;
+  border-radius: 8px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.deck-draw:hover,
+.deck-draw:focus-visible {
+  transform: translateY(-6px);
+}
+
+.deck-draw:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(78, 110, 245, 0.45);
+}
+
+.deck-count {
+  color: #6c757d;
+  font-size: 0.85rem;
+}
+
+.table {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-height: 90px;
+}
+
+.table-row {
+  display: flex;
+  gap: 1rem;
+}
+
+/* Drawn with an outline instead of a border so every row stays exactly one
+   card tall: the fold stacks rows by a fixed offset, and mixed heights would
+   leave ragged gaps in the pile. */
+.table-row-war {
+  outline: 2px dashed #ced4da;
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+.table-hint {
+  color: #6c757d;
+}
+
+.table-cards {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* The revealed rows collapse into a single fanned pile… */
+.table-fold {
+  gap: 0;
+  transition: gap 0.35s ease;
+}
+
+.table-fold .table-row {
+  gap: 0;
+  margin-top: -64px;
+  transform: rotate(-1.5deg);
+  outline-color: transparent;
+  transition:
+    gap 0.35s ease,
+    margin-top 0.35s ease,
+    transform 0.35s ease,
+    outline-color 0.35s ease;
+}
+
+.table-fold .table-row:first-child {
+  margin-top: 0;
+}
+
+/* …then the pile flies into the round winner's deck and is absorbed by it.
+   The travel distance comes from the --collect-* variables Lobby.tsx measures
+   between the pile and the deck's card. It stays full size while it flies and
+   only shrinks and fades in the last quarter, so it reads as landing on the
+   deck rather than vanishing mid-air. */
+.table-collect {
+  animation: table-collect 0.45s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@keyframes table-collect {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  75% {
+    transform: translate(var(--collect-x, 0px), var(--collect-y, 0px))
+      rotate(var(--collect-rot, 0deg));
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--collect-x, 0px), var(--collect-y, 0px)) scale(0.5)
+      rotate(var(--collect-rot, 0deg));
+    opacity: 0;
+  }
+}
+
+.playing-card {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 68px;
+  border: 1px solid #343a40;
+  border-radius: 6px;
+  background: #fff;
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.playing-card-red {
+  color: #c92a2a;
+}
+
+.playing-card-back {
+  background: repeating-linear-gradient(45deg, #4c6ef5, #4c6ef5 4px, #364fc7 4px, #364fc7 8px);
+}
+
+.card-in {
+  animation: card-in 0.4s ease-out;
+}
+
+@keyframes card-in {
+  from {
+    transform: translateY(-12px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
