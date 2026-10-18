@@ -4,21 +4,14 @@ using Microsoft.AspNetCore.Mvc;
 namespace Durnius.Web.Features.Account;
 
 [ApiController]
-public class AccountController : ControllerBase
+public class AccountController(
+    IAccountService accountService,
+    ITokenService tokenService,
+    ILogger<AccountController> logger) : ControllerBase
 {
-    private readonly IAccountService _accountService;
-    private readonly ITokenService _tokenService;
-    private readonly ILogger<AccountController> _logger;
-
-    public AccountController(
-        IAccountService accountService,
-        ITokenService tokenService,
-        ILogger<AccountController> logger)
-    {
-        _accountService = accountService;
-        _tokenService = tokenService;
-        _logger = logger;
-    }
+    private readonly IAccountService _accountService = accountService;
+    private readonly ITokenService _tokenService = tokenService;
+    private readonly ILogger<AccountController> _logger = logger;
 
     [HttpPost("/api/login")]
     [AllowAnonymous]

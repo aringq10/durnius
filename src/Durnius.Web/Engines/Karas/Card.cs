@@ -2,37 +2,31 @@ namespace Durnius.Web.Engines.Karas;
 
 public enum Suit
 {
-    hearts,
-    diamonds,
-    clubs,
-    spades
+    Hearts,
+    Diamonds,
+    Clubs,
+    Spades
 }
 
 public enum Value
 {
-    two = 2,
-    three,
-    four,
-    five,
-    six,
-    seven,
-    eight,
-    nine,
-    ten,
-    jack,
-    queen,
-    king,
-    ace
+    Two = 2,
+    Three,
+    Four,
+    Five,
+    Six,
+    Seven,
+    Eight,
+    Nine,
+    Ten,
+    Jack,
+    Queen,
+    King,
+    Ace
 }
 
-public class Card
+public class Card(Suit suit, Value value)
 {
-    public Suit Suit { get; }
-    public Value Value { get; }
-
-    public Card(Suit suit, Value value)
-    {
-        Suit = suit;
-        Value = value;
-    }
+    public Suit Suit { get; } = suit;
+    public Value Value { get; } = value;
 }
