@@ -50,7 +50,6 @@ public class LobbyHub : Hub<ILobbyClient>
         if (_match.IsRunning)
         {
             await Clients.Caller.JoinRejected("Ongoing match");
-            Context.Abort();
             return;
         }
 
@@ -58,7 +57,6 @@ public class LobbyHub : Hub<ILobbyClient>
         if (State is null)
         {
             await Clients.Caller.JoinRejected("Already in this lobby");
-            Context.Abort();
             return;
         }
 
@@ -77,6 +75,7 @@ public class LobbyHub : Hub<ILobbyClient>
         var removed = _lobby.Remove(Context.ConnectionId);
         if (removed)
         {
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, "Lobby");
             await Clients.Group("Lobby").LobbyUpdate(LobbyDto(_lobby.GetState()));
         }
     }

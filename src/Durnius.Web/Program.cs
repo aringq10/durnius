@@ -1,4 +1,5 @@
 using System.Text;
+using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -34,7 +35,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = builder.Configuration["Jwt:Audience"]
                 ?? throw new InvalidOperationException("Jwt:Audience is not configured."),
             ValidateLifetime = true,
-            ClockSkew = TimeSpan.Zero // Remove the default 5-minute tolerance.
+            ClockSkew = TimeSpan.Zero, // Remove the default 5-minute tolerance.
+            // Tokens store the username under the JWT "name" claim, which has no entry
+            // in the default inbound claim map, so Identity.Name would otherwise be null.
+            NameClaimType = JwtRegisteredClaimNames.Name
         };
 
         options.Events = new JwtBearerEvents
