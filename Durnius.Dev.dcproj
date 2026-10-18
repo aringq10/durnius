@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" Sdk="Microsoft.Docker.Sdk">
+  <PropertyGroup Label="Globals">
+    <ProjectVersion>2.1</ProjectVersion>
+    <DockerTargetOS>Linux</DockerTargetOS>
+    <ProjectGuid>3a295608-6a21-45b0-a224-41792ea45816</ProjectGuid>
+    <DockerComposeBaseFilePath>docker-compose</DockerComposeBaseFilePath>
+    <AdditionalComposeFilePaths>docker-compose.dev.yml</AdditionalComposeFilePaths>
+    <DockerLaunchAction>LaunchBrowser</DockerLaunchAction>
+    <DockerServiceName>client</DockerServiceName>
+    <DockerServiceUrl>http://localhost:5173</DockerServiceUrl>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="docker-compose.yml" />
+    <None Include="docker-compose.dev.yml" />
+    <None Include=".dockerignore" />
+    <None Include="docker/Dockerfile.dev" />
+  </ItemGroup>
+</Project>

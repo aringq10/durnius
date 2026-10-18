@@ -13,24 +13,12 @@ CMD ["sh", "-c", "[ -x node_modules/.bin/vite ] || npm ci; exec npm run dev -- -
 
 # ---- backend dev: dotnet watch with hot reload ----
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS backend
-
-ARG UID=1000
-ARG GID=1000
-
-ENV HOME=/home/app \
-    DOTNET_CLI_HOME=/home/app \
-    NUGET_PACKAGES=/home/app/.nuget/packages \
-    DOTNET_USE_POLLING_FILE_WATCHER=1 \
-    ASPNETCORE_HTTP_PORTS=8080 \
-    DOTNET_NOLOGO=1
-RUN mkdir -p /home/app/.nuget/packages && chown -R ${UID}:${GID} /home/app
-
 WORKDIR /src
-# Restore at build time so NuGet packages are cached in the image; obj/ is
-# bind-mounted over this at runtime.
-COPY --chown=${UID}:${GID} src/Durnius.Web/Durnius.Web.csproj src/Durnius.Web/Directory.Build.props src/Durnius.Web/
-USER ${UID}:${GID}
+
+COPY src/Durnius.Web/Directory.Build.props src/
+COPY src/Durnius.Web/Durnius.Web.csproj src/Durnius.Web/
 RUN dotnet restore src/Durnius.Web/Durnius.Web.csproj
 
+WORKDIR /src/src/Durnius.Web
 EXPOSE 8080
-ENTRYPOINT ["dotnet", "watch", "--non-interactive", "run", "--project", "src/Durnius.Web/Durnius.Web.csproj", "--no-launch-profile"]
+ENTRYPOINT ["dotnet", "watch", "--non-interactive", "run", "--no-launch-profile"]

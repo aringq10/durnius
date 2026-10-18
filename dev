@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Run from the script's directory so relative compose paths and .env resolve
+cd "$(dirname "${BASH_SOURCE[0]}")"
+
+if [[ "${1:-}" == "prod" ]]; then
+  shift
+  exec docker compose -f docker-compose.yml "$@"
+else
+  exec docker compose -f docker-compose.yml -f docker-compose.dev.yml "$@"
+fi

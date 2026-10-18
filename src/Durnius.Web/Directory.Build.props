@@ -1,17 +1,6 @@
 <Project>
-
-  <!--
-    The .NET SDK defaults BaseIntermediateOutputPath to "obj\" (with a
-    backslash). On Linux that leaves IntermediateOutputPath as
-    "obj\Debug/net10.0/", which MSBuild tolerates but managed tools build into a
-    broken path. Notably `dotnet watch` then fails to read
-    obj/Debug/<tfm>/staticwebassets.development.json and refuses to start.
-
-    Declaring it with a forward slash here (Directory.Build.props is imported
-    early enough to take effect) keeps IntermediateOutputPath portable.
-  -->
-  <PropertyGroup>
-    <BaseIntermediateOutputPath>obj/</BaseIntermediateOutputPath>
+  <PropertyGroup Condition="'$(DOTNET_RUNNING_IN_CONTAINER)' == 'true'">
+    <BaseIntermediateOutputPath>/build/$(MSBuildProjectName)/obj/</BaseIntermediateOutputPath>
+    <BaseOutputPath>/build/$(MSBuildProjectName)/bin/</BaseOutputPath>
   </PropertyGroup>
-
 </Project>
