@@ -65,7 +65,8 @@ if (builder.Environment.IsDevelopment())
         options.AddPolicy("DevClient", policy =>
             policy.WithOrigins(DevClientOrigin)
                   .AllowAnyHeader()
-                  .AllowAnyMethod()));
+                  .AllowAnyMethod()
+                  .AllowCredentials()));
 }
 
 builder.Services.AddSingleton<LobbyManager>();
