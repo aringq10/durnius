@@ -5,7 +5,7 @@ name: durnius
 #
 #   docker compose up --build
 #
-# For hot-reload development use docker-compose.dev.yml instead.
+# For hot-reload development use in conjunction with docker-compose.dev.yml.
 
 services:
   backend:
