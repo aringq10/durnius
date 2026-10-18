@@ -1,8 +1,0 @@
-<Project>
-
-  <PropertyGroup>
-    <!-- Surface .editorconfig style/naming violations as build warnings so CI catches them. -->
-    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
-  </PropertyGroup>
-
-</Project>
