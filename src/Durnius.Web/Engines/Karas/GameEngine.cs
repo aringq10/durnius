@@ -28,10 +28,10 @@ public class GameEngine
     private bool gameOver;
     private int gameWinner;
 
-    public GameEngine()
+    public GameEngine(int? seed = null)
     {
         Deck deck = new();
-        deck.Shuffle();
+        deck.Shuffle(seed: seed);
 
         while (deck.Count() > 0)
         {
@@ -47,9 +47,9 @@ public class GameEngine
         }
     }
 
-    public (int Player1, int Player2) CardCounts()
+    public CardCount CardCounts()
     {
-        return (player1.CardCount(), player2.CardCount());
+        return new CardCount(player1.CardCount(), player2.CardCount());
     }
 
     public (Card? Card, RoundResult? Result) DrawCardP1()

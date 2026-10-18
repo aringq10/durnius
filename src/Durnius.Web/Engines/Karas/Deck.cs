@@ -15,9 +15,9 @@ public class Deck
         }
     }
 
-    public void Shuffle()
+    public void Shuffle(int? seed = null)
     {
-        Random random = new();
+        Random random = seed.HasValue ? new Random(seed.Value) : new Random();
 
         for (int i = cards.Count - 1; i > 0; i--)
         {
