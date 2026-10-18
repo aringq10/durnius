@@ -124,15 +124,19 @@ public class GameEngine
 
             while (true)
             {
-                if (player1.CardCount() < 2)
+                if (player1.CardCount() < 2 || player2.CardCount() < 2)
                 {
-                    gameWinner = 2;
-                    break;
-                }
+                    gameWinner = player1.CardCount() < 2 ? 2 : 1;
 
-                if (player2.CardCount() < 2)
-                {
-                    gameWinner = 1;
+                    warCards.Add(card1);
+                    warCards.Add(card2);
+
+                    Player potWinner = gameWinner == 1 ? player1 : player2;
+                    foreach (Card card in warCards)
+                    {
+                        potWinner.AddCard(card);
+                    }
+
                     break;
                 }
 
