@@ -1,0 +1,24 @@
+# syntax=docker/dockerfile:1
+
+# ---- client dev: Vite dev server with HMR ----
+FROM node:26-alpine AS client
+WORKDIR /app
+
+COPY src/Durnius.Client/package.json src/Durnius.Client/package-lock.json ./
+COPY src/Durnius.Client/ ./
+
+EXPOSE 5173
+# Install deps only when they are missing.
+CMD ["sh", "-c", "[ -x node_modules/.bin/vite ] || npm ci; exec npm run dev -- --host 0.0.0.0"]
+
+# ---- backend dev: dotnet watch with hot reload ----
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS backend
+WORKDIR /src
+
+COPY src/Durnius.Web/Directory.Build.props src/
+COPY src/Durnius.Web/Durnius.Web.csproj src/Durnius.Web/
+RUN dotnet restore src/Durnius.Web/Durnius.Web.csproj
+
+WORKDIR /src/src/Durnius.Web
+EXPOSE 8080
+ENTRYPOINT ["dotnet", "watch", "--non-interactive", "run", "--no-launch-profile"]

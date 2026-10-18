@@ -1,0 +1,37 @@
+name: durnius-dev
+
+# Development stack: Vite dev server with HMR (port 5173) alongside the API
+# running under `dotnet watch` hot reload (port 8080) and postgres. Start it with:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+
+services:
+  client:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dev
+      target: client
+    user: "${DOCKER_UID:-1000}:${DOCKER_GID:-1000}"
+    environment:
+      VITE_API_URL: http://localhost:${PORT:?}
+    volumes:
+      - ./src/Durnius.Client:/app
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dev
+      target: backend
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      DOTNET_USE_POLLING_FILE_WATCHER: "1"
+    volumes:
+      - ./src/Durnius.Web:/src/src/Durnius.Web:ro
+      - build-output:/build
+
+volumes:
+  build-output:

@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup Condition="'$(DOTNET_RUNNING_IN_CONTAINER)' == 'true'">
+    <BaseIntermediateOutputPath>/build/$(MSBuildProjectName)/obj/</BaseIntermediateOutputPath>
+    <BaseOutputPath>/build/$(MSBuildProjectName)/bin/</BaseOutputPath>
+  </PropertyGroup>
+</Project>

@@ -27,7 +27,7 @@ export default function Login() {
     setErrors([]);
     setSubmitting(true);
     try {
-      const auth = await postJson<AuthResponse>("/login", {
+      const auth = await postJson<AuthResponse>("/api/login", {
         username,
         password,
       });
