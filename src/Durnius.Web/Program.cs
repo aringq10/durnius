@@ -1,12 +1,11 @@
-using System.Text;
 using System.IdentityModel.Tokens.Jwt;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-
+using System.Text;
 using Durnius.Web.Data;
 using Durnius.Web.Features.Account;
 using Durnius.Web.Features.Multiplayer;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 
 // Default port the Vite dev server listens on.
 const string DevClientOrigin = "http://localhost:5173";

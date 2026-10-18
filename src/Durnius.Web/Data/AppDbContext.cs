@@ -2,30 +2,26 @@
 
 namespace Durnius.Web.Data;
 
-public class AppDbContext : DbContext
+public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
-    public AppDbContext(DbContextOptions<AppDbContext> options)
-        : base(options)
-    {
-    }
     public DbSet<User> Users => Set<User>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
-{
-    base.OnModelCreating(modelBuilder);
-
-    modelBuilder.Entity<User>(entity =>
     {
-        entity.Property(user => user.Username)
-            .HasMaxLength(32)
-            .IsRequired();
+        base.OnModelCreating(modelBuilder);
 
-        entity.Property(user => user.PasswordHash)
-            .HasMaxLength(256)
-            .IsRequired();
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.Property(user => user.Username)
+                .HasMaxLength(32)
+                .IsRequired();
 
-        entity.HasIndex(user => user.Username)
-            .IsUnique();
-    });
-}
+            entity.Property(user => user.PasswordHash)
+                .HasMaxLength(256)
+                .IsRequired();
+
+            entity.HasIndex(user => user.Username)
+                .IsUnique();
+        });
+    }
 }
