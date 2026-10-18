@@ -4,14 +4,14 @@ public record LobbyState(int Capacity, int Count, IReadOnlyList<MatchPlayer> Pla
 
 public class LobbyManager
 {
-    private const int _capacity = 2;
+    private const int Capacity = 2;
 
-    private readonly object _gate = new();
-    private readonly Dictionary<string, string> _occupants = new();
+    private readonly Lock _gate = new();
+    private readonly Dictionary<string, string> _occupants = [];
 
     public LobbyState GetState()
     {
-        return new(_capacity, _occupants.Count, GetPlayers());
+        return new(Capacity, _occupants.Count, GetPlayers());
     }
 
     public (LobbyState? State, bool StartMatch) Join(string connectionId, string username)
@@ -30,9 +30,9 @@ public class LobbyManager
 
             var players = GetPlayers();
 
-            bool startMatch = false;
+            var startMatch = false;
 
-            if (_occupants.Count == _capacity)
+            if (_occupants.Count == Capacity)
             {
                 _occupants.Clear();
                 startMatch = true;
@@ -40,7 +40,7 @@ public class LobbyManager
 
             return (new LobbyState
             (
-                Capacity: _capacity,
+                Capacity: Capacity,
                 Count: players.Count,
                 Players: players
             ), startMatch);
@@ -57,8 +57,6 @@ public class LobbyManager
 
     public IReadOnlyList<MatchPlayer> GetPlayers()
     {
-        return _occupants
-            .Select(occupant => new MatchPlayer(occupant.Key, occupant.Value))
-            .ToList();
+        return [.. _occupants.Select(occupant => new MatchPlayer(occupant.Key, occupant.Value))];
     }
 }

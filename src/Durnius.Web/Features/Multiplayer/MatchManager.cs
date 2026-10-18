@@ -19,7 +19,7 @@ public sealed class DrawOutcome
 
 public class MatchManager
 {
-    private readonly object _gate = new();
+    private readonly Lock _gate = new();
 
     private GameEngine? _game;
     private MatchPlayer? _player1;
@@ -42,7 +42,9 @@ public class MatchManager
         lock (_gate)
         {
             if (_running || members.Count != 2)
+            {
                 return null;
+            }
 
             _game = new GameEngine();
             _player1 = members[0];
@@ -59,7 +61,9 @@ public class MatchManager
         lock (_gate)
         {
             if (!_running || _game is null || _player1 is null || _player2 is null)
+            {
                 return null;
+            }
 
             RoundResult? round;
             bool player1Drawn, player2Drawn;
@@ -135,10 +139,12 @@ public class MatchManager
         lock (_gate)
         {
             if (!_running || _player1 is null || _player2 is null)
+            {
                 return null;
+            }
 
             MatchPlayer? opponent = null;
-            int winner = 0;
+            var winner = 0;
             if (connectionId == _player1.ConnectionId)
             {
                 opponent = _player2;
@@ -151,7 +157,9 @@ public class MatchManager
             }
 
             if (opponent is null)
+            {
                 return null;
+            }
 
             _running = false;
             return (opponent, winner);

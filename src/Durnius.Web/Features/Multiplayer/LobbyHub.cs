@@ -20,17 +20,11 @@ public interface ILobbyClient
 }
 
 [Authorize]
-public class LobbyHub : Hub<ILobbyClient>
+public class LobbyHub(LobbyManager lobby, MatchManager match) : Hub<ILobbyClient>
 {
-    private readonly LobbyManager _lobby;
-    private readonly MatchManager _match;
+    private readonly LobbyManager _lobby = lobby;
+    private readonly MatchManager _match = match;
     private string Username => Context.User!.Identity!.Name!;
-
-    public LobbyHub(LobbyManager lobby, MatchManager match)
-    {
-        _lobby = lobby;
-        _match = match;
-    }
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
@@ -85,7 +79,9 @@ public class LobbyHub : Hub<ILobbyClient>
     {
         var outcome = _match.Draw(Context.ConnectionId);
         if (outcome is null)
+        {
             return;
+        }
 
         var connections = new[] { outcome.Player1.ConnectionId, outcome.Player2.ConnectionId };
         await Clients.Clients(connections).DrawStatus(new
@@ -109,7 +105,9 @@ public class LobbyHub : Hub<ILobbyClient>
     {
         var start = _match.TryStart(players);
         if (start is null)
+        {
             return;
+        }
 
         await Clients.Client(start.Player1.ConnectionId).MatchStarted(new
         {
@@ -141,8 +139,8 @@ public class LobbyHub : Hub<ILobbyClient>
         gameWinner = round.GameWinner,
     };
 
-    private static object? CardDto(Card card) => new
-        { suit = card.Suit.ToString().ToLowerInvariant(), value = card.Value.ToString().ToLowerInvariant() };
+    private static object CardDto(Card card) => new
+    { suit = card.Suit.ToString().ToLowerInvariant(), value = card.Value.ToString().ToLowerInvariant() };
 
     private static object LobbyDto(LobbyState state) => new
     {

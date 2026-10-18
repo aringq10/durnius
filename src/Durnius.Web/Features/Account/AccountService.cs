@@ -26,18 +26,13 @@ public sealed record AccountResult(
     public bool Succeeded => Status == AccountResultStatus.Success;
 }
 
-public class AccountService : IAccountService
+public class AccountService(AppDbContext db) : IAccountService
 {
     // Mirrors the constraints configured on the User entity / Users table.
     public const int UsernameMaxLength = 32;
     public const int PasswordMaxLength = 72; // BCrypt only uses the first 72 bytes.
 
-    private readonly AppDbContext _db;
-
-    public AccountService(AppDbContext db)
-    {
-        _db = db;
-    }
+    private readonly AppDbContext _db = db;
 
     public IReadOnlyList<string> ValidateInput(string? username, string? password)
     {
