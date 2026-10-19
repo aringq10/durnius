@@ -4,44 +4,42 @@ namespace Durnius.Web.Engines.Karas;
 
 public class Deck : IEnumerable<Card>
 {
-    private List<Card> cards = new();
+    private readonly List<Card> _cards = [];
 
     public Deck()
     {
-        foreach (Suit suit in Enum.GetValues<Suit>())
+        foreach (var suit in Enum.GetValues<Suit>())
         {
-            foreach (Value value in Enum.GetValues<Value>())
+            foreach (var value in Enum.GetValues<Value>())
             {
-                cards.Add(new Card(suit, value));
+                _cards.Add(new Card(suit, value));
             }
         }
     }
 
     public void Shuffle(int? seed = null)
     {
-        Random random = seed.HasValue ? new Random(seed.Value) : new Random();
+        var random = seed.HasValue ? new Random(seed.Value) : new Random();
 
-        for (int i = cards.Count - 1; i > 0; i--)
+        for (var i = _cards.Count - 1; i > 0; i--)
         {
-            int j = random.Next(i + 1);
+            var j = random.Next(i + 1);
 
-            Card temp = cards[i];
-            cards[i] = cards[j];
-            cards[j] = temp;
+            (_cards[j], _cards[i]) = (_cards[i], _cards[j]);
         }
     }
 
     public Card DrawCard()
     {
-        Card card = cards[0];
-        cards.RemoveAt(0);
+        var card = _cards[0];
+        _cards.RemoveAt(0);
 
         return card;
     }
 
     public int Count()
     {
-        return cards.Count;
+        return _cards.Count;
     }
     public IEnumerator<Card> GetEnumerator() => cards.GetEnumerator();
 

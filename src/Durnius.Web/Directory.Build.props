@@ -1,4 +1,10 @@
 <Project>
+
+  <PropertyGroup>
+    <!-- Surface .editorconfig style/naming violations as build warnings so CI catches them. -->
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+
   <PropertyGroup Condition="'$(DOTNET_RUNNING_IN_CONTAINER)' == 'true'">
     <BaseIntermediateOutputPath>/build/$(MSBuildProjectName)/obj/</BaseIntermediateOutputPath>
     <BaseOutputPath>/build/$(MSBuildProjectName)/bin/</BaseOutputPath>

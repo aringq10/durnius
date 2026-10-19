@@ -2,27 +2,27 @@ namespace Durnius.Web.Engines.Karas;
 
 public enum Suit
 {
-    hearts,
-    diamonds,
-    clubs,
-    spades
+    Hearts,
+    Diamonds,
+    Clubs,
+    Spades
 }
 
 public enum Value
 {
-    two = 2,
-    three,
-    four,
-    five,
-    six,
-    seven,
-    eight,
-    nine,
-    ten,
-    jack,
-    queen,
-    king,
-    ace
+    Two = 2,
+    Three,
+    Four,
+    Five,
+    Six,
+    Seven,
+    Eight,
+    Nine,
+    Ten,
+    Jack,
+    Queen,
+    King,
+    Ace
 }
 
 public sealed class Card : IEquatable<Card>, IComparable<Card>

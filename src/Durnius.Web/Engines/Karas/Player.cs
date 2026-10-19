@@ -2,23 +2,23 @@ namespace Durnius.Web.Engines.Karas;
 
 public class Player
 {
-    private List<Card> cards = new();
+    private readonly List<Card> _cards = [];
 
     public Card DrawCard()
     {
-        Card card = cards[0];
-        cards.RemoveAt(0);
+        var card = _cards[0];
+        _cards.RemoveAt(0);
 
         return card;
     }
 
     public void AddCard(Card card)
     {
-        cards.Add(card);
+        _cards.Add(card);
     }
 
     public int CardCount()
     {
-        return cards.Count;
+        return _cards.Count;
     }
 }
