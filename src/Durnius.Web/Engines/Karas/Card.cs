@@ -25,17 +25,10 @@ public enum Value
     Ace
 }
 
-public sealed class Card : IEquatable<Card>, IComparable<Card>
+public sealed class Card(Suit suit, Value value) : IEquatable<Card>, IComparable<Card>
 {
-    public Suit Suit { get; }
-    public Value Value { get; }
-
-    public Card(Suit suit, Value value)
-    {
-        Suit = suit;
-        Value = value;
-    }
-
+    public Suit Suit { get; } = suit;
+    public Value Value { get; } = value;
 
     public bool Equals(Card? other)
     {
@@ -49,9 +42,12 @@ public sealed class Card : IEquatable<Card>, IComparable<Card>
 
     public int CompareTo(Card? other)
     {
-        if (other is null) return 1;
+        if (other is null)
+        {
+            return 1;
+        }
 
-        int byValue = Value.CompareTo(other.Value);
+        var byValue = Value.CompareTo(other.Value);
         return byValue != 0 ? byValue : Suit.CompareTo(other.Suit);
     }
 

@@ -41,7 +41,7 @@ public class Deck : IEnumerable<Card>
     {
         return _cards.Count;
     }
-    public IEnumerator<Card> GetEnumerator() => cards.GetEnumerator();
+    public IEnumerator<Card> GetEnumerator() => _cards.GetEnumerator();
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }

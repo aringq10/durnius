@@ -9,7 +9,7 @@ public sealed class RoundResult
     public required Card Player1Card { get; init; }
     public required Card Player2Card { get; init; }
     /// <summary>Extra pairs compared after the initial draw tied (empty when no war happened).</summary>
-    public IReadOnlyList<WarExchange> War { get; init; } = [];
+    public IReadOnlyList<WarExchange> War { get; init; } = Array.Empty<WarExchange>();
     public int Player1Count { get; init; }
     public int Player2Count { get; init; }
     public bool GameOver { get; init; }
@@ -35,8 +35,8 @@ public class GameEngine
 
         while (deck.Count() > 0)
         {
-            var card = deck.DrawCard();
-            if (card.Suit == Suit.Hearts || card.Suit == Suit.Diamonds)
+            Card card = deck.DrawCard();
+            if(card.Suit == Suit.Hearts || card.Suit == Suit.Diamonds)
             {
                 _player1.AddCard(card);
             }
@@ -94,6 +94,8 @@ public class GameEngine
         return (drawn, r);
     }
 
+    private static readonly IComparer<Card> _ValueComparer = new CardValueComparer();
+
     private RoundResult PlayRound()
     {
         var card1 = _player1Drawn!;
@@ -106,13 +108,13 @@ public class GameEngine
         int roundWinner;
         _gameWinner = 0;
 
-        if (card1.Value > card2.Value)
+        if (_ValueComparer.Compare(card1, card2) > 0)
         {
             _player1.AddCard(card1);
             _player1.AddCard(card2);
             roundWinner = 1;
         }
-        else if (card2.Value > card1.Value)
+         else if (_ValueComparer.Compare(card1, card2) < 0)
         {
             _player2.AddCard(card1);
             _player2.AddCard(card2);
@@ -131,8 +133,8 @@ public class GameEngine
                     warCards.Add(card1);
                     warCards.Add(card2);
 
-                    var potWinner = _gameWinner == 1 ? _player1 : _player2;
-                    foreach (var card in warCards)
+                    Player potWinner = _gameWinner == 1 ? _player1 : _player2;
+                    foreach (Card card in warCards)
                     {
                         potWinner.AddCard(card);
                     }
@@ -151,9 +153,9 @@ public class GameEngine
                 card2 = _player2.DrawCard();
                 war.Add(new WarExchange(card1, card2));
 
-                if (card1.Value > card2.Value)
+                if (_ValueComparer.Compare(card1, card2) > 0)
                 {
-                    for (var i = 0; i < warCards.Count; i++)
+                    for (int i = 0; i < warCards.Count; i++)
                     {
                         _player1.AddCard(warCards[i]);
                     }
@@ -163,9 +165,9 @@ public class GameEngine
                     break;
                 }
 
-                if (card2.Value > card1.Value)
+                if (_ValueComparer.Compare(card1, card2) < 0)
                 {
-                    for (var i = 0; i < warCards.Count; i++)
+                    for (int i = 0; i < warCards.Count; i++)
                     {
                         _player2.AddCard(warCards[i]);
                     }
@@ -182,18 +184,11 @@ public class GameEngine
             }
         }
 
-        var count1 = _player1.CardCount();
-        var count2 = _player2.CardCount();
+        int count1 = _player1.CardCount();
+        int count2 = _player2.CardCount();
 
-        if (_gameWinner == 0 && count1 == 0)
-        {
-            _gameWinner = 2;
-        }
-
-        if (_gameWinner == 0 && count2 == 0)
-        {
-            _gameWinner = 1;
-        }
+        if (_gameWinner == 0 && count1 == 0) _gameWinner = 2;
+        if (_gameWinner == 0 && count2 == 0) _gameWinner = 1;
 
         _gameOver = _gameWinner != 0;
 
@@ -214,4 +209,5 @@ public class GameEngine
             GameWinner = _gameWinner,
         };
     }
+    
 }
