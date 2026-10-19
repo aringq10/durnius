@@ -1,4 +1,3 @@
-using Durnius.Web.Engines.Karas;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
@@ -56,7 +55,7 @@ public class LobbyHub(LobbyManager lobby, MatchManager match) : Hub<ILobbyClient
 
         await Groups.AddToGroupAsync(Context.ConnectionId, "Lobby");
 
-        await Clients.Group("Lobby").LobbyUpdate(LobbyDto(State));
+        await Clients.Group("Lobby").LobbyUpdate(State.ToDto());
 
         if (StartMatch)
         {
@@ -70,7 +69,7 @@ public class LobbyHub(LobbyManager lobby, MatchManager match) : Hub<ILobbyClient
         if (removed)
         {
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, "Lobby");
-            await Clients.Group("Lobby").LobbyUpdate(LobbyDto(_lobby.GetState()));
+            await Clients.Group("Lobby").LobbyUpdate(_lobby.GetState().ToDto());
         }
     }
 
@@ -92,7 +91,7 @@ public class LobbyHub(LobbyManager lobby, MatchManager match) : Hub<ILobbyClient
 
         if (outcome.Round is not null)
         {
-            await Clients.Clients(connections).RoundResult(RoundDto(outcome.Round));
+            await Clients.Clients(connections).RoundResult(outcome.Round.ToDto());
         }
 
         if (outcome.MatchEnded)
@@ -126,26 +125,4 @@ public class LobbyHub(LobbyManager lobby, MatchManager match) : Hub<ILobbyClient
             player2Count = start.Player2Count,
         });
     }
-
-    private static object RoundDto(RoundResult round) => new
-    {
-        roundWinner = round.RoundWinner,
-        player1Card = CardDto(round.Player1Card),
-        player2Card = CardDto(round.Player2Card),
-        war = round.War.Select(w => new { player1 = CardDto(w.Player1Card), player2 = CardDto(w.Player2Card) }).ToArray(),
-        player1Count = round.Player1Count,
-        player2Count = round.Player2Count,
-        gameOver = round.GameOver,
-        gameWinner = round.GameWinner,
-    };
-
-    private static object CardDto(Card card) => new
-    { suit = card.Suit.ToString().ToLowerInvariant(), value = card.Value.ToString().ToLowerInvariant() };
-
-    private static object LobbyDto(LobbyState state) => new
-    {
-        capacity = state.Capacity,
-        count = state.Count,
-        players = state.Players.Select(player => player.Username).ToList()
-    };
 }
