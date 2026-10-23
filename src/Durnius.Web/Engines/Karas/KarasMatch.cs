@@ -30,7 +30,7 @@ public record CardDto
     }
 }
 
-public class KarasMatch : IMatch<KarasMatch>
+public class KarasMatch : ICreatableMatch<KarasMatch>
 {
     private readonly Lock _gate = new();
 
