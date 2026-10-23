@@ -1,15 +1,20 @@
 namespace Durnius.Web.Features.Multiplayer;
 
-public interface IMatch<TSelf> where TSelf : IMatch<TSelf>
+public interface IMatch
 {
-    static abstract (TSelf, Response) Create(MatchOptions options);
+    bool IsRunning { get; }
 
     Response MakeMove(string connectionId, object move);
 
     Response Disconnect(string connectionId);
-
-    bool IsRunning { get; }
 }
+
+public interface ICreatableMatch<TSelf> : IMatch where TSelf : ICreatableMatch<TSelf>
+{
+    static abstract (TSelf, Response) Create(MatchOptions options);
+}
+
+public record MatchPlayer(string ConnectionId, string Username);
 
 public record MatchOptions(List<MatchPlayer> Players);
 
