@@ -5,6 +5,13 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <!-- The dev container bind-mounts this directory read-only while redirecting
+    its build outputs to /build. Exclude host-generated bin/obj so files
+    created by IDEs/Roslyn LSP are not compiled a second time. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);obj/**;bin/**</DefaultItemExcludes>
+  </PropertyGroup>
+
   <PropertyGroup Condition="'$(DOTNET_RUNNING_IN_CONTAINER)' == 'true'">
     <BaseIntermediateOutputPath>/build/$(MSBuildProjectName)/obj/</BaseIntermediateOutputPath>
     <BaseOutputPath>/build/$(MSBuildProjectName)/bin/</BaseOutputPath>
