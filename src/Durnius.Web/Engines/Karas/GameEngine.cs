@@ -36,7 +36,7 @@ public class GameEngine
         while (deck.Count() > 0)
         {
             var card = deck.DrawCard();
-            if (card.Suit == Suit.Hearts || card.Suit == Suit.Diamonds)
+            if (card.Suit.IsRed())
             {
                 _player1.AddCard(card);
             }
