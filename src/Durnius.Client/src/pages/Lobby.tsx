@@ -226,13 +226,17 @@ export default function Lobby() {
     navigate("/login", { replace: true });
   }
 
-  async function invoke(method: "JoinLobby" | "LeaveLobby" | "Draw") {
+  async function invoke(method: "JoinLobby" | "LeaveLobby" | "MakeMove") {
     const connection = connectionRef.current;
     if (!connection) return;
 
     setActionError(null);
     try {
-      await connection.invoke(method);
+      if (method == "MakeMove") {
+        await connection.invoke(method, null);
+      } else {
+        await connection.invoke(method);
+      }
     } catch (err: unknown) {
       setActionError(errorMessage(err));
     }
@@ -240,7 +244,7 @@ export default function Lobby() {
 
   async function handleDraw() {
     setDrawing(true);
-    await invoke("Draw");
+    await invoke("MakeMove");
     setDrawing(false);
   }
 

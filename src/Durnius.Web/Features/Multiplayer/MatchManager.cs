@@ -1,166 +1,80 @@
-using Durnius.Web.Engines.Karas;
+using System.Collections.Concurrent;
+using Microsoft.AspNetCore.SignalR;
 
 namespace Durnius.Web.Features.Multiplayer;
 
-public sealed record MatchStart(MatchPlayer Player1, MatchPlayer Player2, int Player1Count, int Player2Count);
-
-public sealed class DrawOutcome
+public class MatchManager(IHubContext<LobbyHub> hubContext)
 {
-    public required MatchPlayer Player1 { get; init; }
-    public required MatchPlayer Player2 { get; init; }
-    public required bool Player1Drawn { get; init; }
-    public required bool Player2Drawn { get; init; }
-    /// <summary>Set when both players drew and the round was resolved.</summary>
-    public RoundResult? Round { get; init; }
-    public required bool MatchEnded { get; init; }
-}
+    private readonly ConcurrentDictionary<Guid, IMatch> _matches = [];
+    private readonly ConcurrentDictionary<string, Guid> _matchByConnection = [];
+    private readonly IHubContext<LobbyHub> _hubContext = hubContext;
 
-public class MatchManager
-{
-    private readonly Lock _gate = new();
-
-    private GameEngine? _game;
-    private MatchPlayer? _player1;
-    private MatchPlayer? _player2;
-    private bool _running;
-
-    public bool IsRunning
+    public async Task<(Guid Guid, Response Response)> StartNewMatch(Game name, MatchOptions options)
     {
-        get
+        var r = MatchRegistry.GetMatch(name, options);
+
+        var guid = Guid.NewGuid();
+
+        _matches.TryAdd(guid, r.Match);
+        foreach (var p in r.Match.Players)
         {
-            lock (_gate)
-            {
-                return _running;
-            }
+            SetByConnection(p.ConnectionId, guid);
+            await _hubContext.Groups.AddToGroupAsync(p.ConnectionId, guid.ToString());
+        }
+
+        return (guid, r.Response);
+    }
+
+    public (Response? Response, bool Ended, IReadOnlyList<MatchPlayer>? Players) ForwardMove(Guid guid, string connectionId, object move)
+    {
+        if (!_matches.TryGetValue(guid, out var match))
+        {
+            return (null, false, null);
+        }
+
+        var result = match.MakeMove(connectionId, move);
+
+        if (!match.IsRunning)
+        {
+            var players = match.Players;
+            return (result, true, players);
+        }
+
+        return (result, false, null);
+    }
+
+    public (Response? Response, bool Ended, IReadOnlyList<MatchPlayer>? Players) ForwardsDisconnect(Guid guid, string connectionId)
+    {
+        if (!_matches.TryGetValue(guid, out var match))
+        {
+            return (null, false, null);
+        }
+
+        var result = match.Disconnect(connectionId);
+
+        if (!match.IsRunning)
+        {
+            var players = match.Players;
+            return (result, true, players);
+        }
+
+        return (result, false, null);
+    }
+
+    public async Task CleanupMatch(Guid guid, IReadOnlyList<MatchPlayer> players)
+    {
+        _matches.TryRemove(guid, out _);
+        foreach (var p in players)
+        {
+            ClearByConnection(p.ConnectionId);
+            await _hubContext.Groups.RemoveFromGroupAsync(p.ConnectionId, guid.ToString());
         }
     }
 
-    public MatchStart? TryStart(IReadOnlyList<MatchPlayer> members)
-    {
-        lock (_gate)
-        {
-            if (_running || members.Count != 2)
-            {
-                return null;
-            }
+    public Guid? GetByConnection(string connectionId) =>
+        _matchByConnection.TryGetValue(connectionId, out var id) ? id : null;
 
-            _game = new GameEngine();
-            _player1 = members[0];
-            _player2 = members[1];
-            _running = true;
+    private void SetByConnection(string connectionId, Guid matchId) => _matchByConnection[connectionId] = matchId;
 
-            var counts = _game.CardCounts();
-            return new MatchStart(_player1, _player2, counts.Player1, counts.Player2);
-        }
-    }
-
-    public DrawOutcome? Draw(string connectionId)
-    {
-        lock (_gate)
-        {
-            if (!_running || _game is null || _player1 is null || _player2 is null)
-            {
-                return null;
-            }
-
-            RoundResult? round;
-            bool player1Drawn, player2Drawn;
-
-            if (connectionId == _player1.ConnectionId)
-            {
-                var r = _game.DrawCardP1();
-                if (r.Card is null)
-                {
-                    return null;
-                }
-                else if (r.Result is null)
-                {
-                    round = r.Result;
-                    player1Drawn = true;
-                    player2Drawn = false;
-                }
-                else
-                {
-                    round = r.Result;
-                    player1Drawn = true;
-                    player2Drawn = true;
-                }
-            }
-            else if (connectionId == _player2.ConnectionId)
-            {
-                var r = _game.DrawCardP2();
-                if (r.Card is null)
-                {
-                    return null;
-                }
-                else if (r.Result is null)
-                {
-                    round = r.Result;
-                    player1Drawn = false;
-                    player2Drawn = true;
-                }
-                else
-                {
-                    round = r.Result;
-                    player1Drawn = true;
-                    player2Drawn = true;
-                }
-            }
-            else
-            {
-                return null;
-            }
-
-            if (round is not null && round.GameOver)
-            {
-                _running = false;
-            }
-
-            return new DrawOutcome
-            {
-                Player1 = _player1,
-                Player2 = _player2,
-                Player1Drawn = player1Drawn,
-                Player2Drawn = player2Drawn,
-                Round = round,
-                MatchEnded = !_running
-            };
-        }
-    }
-
-    /// <summary>
-    /// Aborts the running match because a player disconnected.
-    /// Returns the remaining player when a running match was aborted, otherwise null.
-    /// </summary>
-    public (MatchPlayer Opponent, int Winner)? End(string connectionId)
-    {
-        lock (_gate)
-        {
-            if (!_running || _player1 is null || _player2 is null)
-            {
-                return null;
-            }
-
-            MatchPlayer? opponent = null;
-            var winner = 0;
-            if (connectionId == _player1.ConnectionId)
-            {
-                opponent = _player2;
-                winner = 2;
-            }
-            else if (connectionId == _player2.ConnectionId)
-            {
-                opponent = _player1;
-                winner = 1;
-            }
-
-            if (opponent is null)
-            {
-                return null;
-            }
-
-            _running = false;
-            return (opponent, winner);
-        }
-    }
+    private void ClearByConnection(string connectionId) => _matchByConnection.TryRemove(connectionId, out _);
 }
