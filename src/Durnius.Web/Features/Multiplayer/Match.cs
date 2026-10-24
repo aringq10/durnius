@@ -4,6 +4,8 @@ public interface IMatch
 {
     bool IsRunning { get; }
 
+    IReadOnlyList<MatchPlayer> Players { get; }
+
     Response MakeMove(string connectionId, object move);
 
     Response Disconnect(string connectionId);
@@ -16,7 +18,7 @@ public interface ICreatableMatch<TSelf> : IMatch where TSelf : ICreatableMatch<T
 
 public record MatchPlayer(string ConnectionId, string Username);
 
-public record MatchOptions(List<MatchPlayer> Players);
+public record MatchOptions(IReadOnlyList<MatchPlayer> Players);
 
 public record Response
 {

@@ -172,6 +172,11 @@ public class KarasMatch : ICreatableMatch<KarasMatch>
         }
     }
 
+    public IReadOnlyList<MatchPlayer> Players
+    {
+        get => [_player1, _player2];
+    }
+
     private static RoundResultDto ToDto(RoundResult round) => new(
         round.RoundWinner,
         new(round.Player1Card),
