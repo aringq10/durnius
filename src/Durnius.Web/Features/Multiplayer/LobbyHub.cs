@@ -1,37 +1,29 @@
-using Durnius.Web.Engines.Karas;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
 namespace Durnius.Web.Features.Multiplayer;
 
-public interface ILobbyClient
-{
-    Task JoinRejected(string reason);
-
-    Task LobbyUpdate(object state);
-
-    Task MatchStarted(object state);
-
-    Task MatchEnded(int winner);
-
-    Task DrawStatus(object state);
-
-    Task RoundResult(object state);
-}
-
 [Authorize]
-public class LobbyHub(LobbyManager lobby, MatchManager match) : Hub<ILobbyClient>
+public class LobbyHub(LobbyManager lobby, MatchManager match) : Hub
 {
     private readonly LobbyManager _lobby = lobby;
     private readonly MatchManager _match = match;
     private string Username => Context.User!.Identity!.Name!;
+    private Guid? MatchId
+    {
+        get => _match.GetByConnection(Context.ConnectionId);
+    }
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        var r = _match.End(Context.ConnectionId);
-        if (r is (var opponent, var winner))
+        if (MatchId is { } id)
         {
-            await Clients.Client(opponent.ConnectionId).MatchEnded(winner);
+            var (response, ended, players) = _match.ForwardsDisconnect(id, Context.ConnectionId);
+            await SendResponse(id, response);
+            if (ended && players is not null)
+            {
+                await _match.CleanupMatch(id, players);
+            }
         }
 
         await LeaveLobby();
@@ -41,111 +33,78 @@ public class LobbyHub(LobbyManager lobby, MatchManager match) : Hub<ILobbyClient
 
     public async Task JoinLobby()
     {
-        if (_match.IsRunning)
-        {
-            await Clients.Caller.JoinRejected("Ongoing match");
-            return;
-        }
-
         var (State, StartMatch) = _lobby.Join(Context.ConnectionId, Username);
         if (State is null)
         {
-            await Clients.Caller.JoinRejected("Already in this lobby");
+            await Clients.Caller.SendAsync("JoinRejected", "Already in this lobby");
             return;
         }
 
         await Groups.AddToGroupAsync(Context.ConnectionId, "Lobby");
-
-        await Clients.Group("Lobby").LobbyUpdate(LobbyDto(State));
+        await Clients.Group("Lobby").SendAsync("LobbyUpdate", new LobbyUpdateDto(State));
 
         if (StartMatch)
         {
-            await TryStartMatchAsync(State.Players);
+            foreach (var p in State.Players)
+            {
+                await Groups.RemoveFromGroupAsync(p.ConnectionId, "Lobby");
+            }
+
+            var r = await _match.StartNewMatch(Game.Karas, new(State.Players));
+
+            await SendResponse(r.Guid, r.Response);
         }
     }
 
     public async Task LeaveLobby()
     {
-        var removed = _lobby.Remove(Context.ConnectionId);
-        if (removed)
+        var state = _lobby.Remove(Context.ConnectionId);
+        if (state is not null)
         {
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, "Lobby");
-            await Clients.Group("Lobby").LobbyUpdate(LobbyDto(_lobby.GetState()));
+            await Clients.Group("Lobby").SendAsync("LobbyUpdate", new LobbyUpdateDto(state));
         }
     }
 
-    /// <summary>Marks this player's draw for the round; resolves the round once both have drawn.</summary>
-    public async Task Draw()
+    public async Task MakeMove(object move)
     {
-        var outcome = _match.Draw(Context.ConnectionId);
-        if (outcome is null)
+        if (MatchId is { } id)
         {
-            return;
-        }
-
-        var connections = new[] { outcome.Player1.ConnectionId, outcome.Player2.ConnectionId };
-        await Clients.Clients(connections).DrawStatus(new
-        {
-            player1Drawn = outcome.Player1Drawn,
-            player2Drawn = outcome.Player2Drawn,
-        });
-
-        if (outcome.Round is not null)
-        {
-            await Clients.Clients(connections).RoundResult(RoundDto(outcome.Round));
-        }
-
-        if (outcome.MatchEnded)
-        {
-            await Clients.Clients(connections).MatchEnded(outcome.Round!.GameWinner);
+            var (response, ended, players) = _match.ForwardMove(id, Context.ConnectionId, move);
+            await SendResponse(id, response);
+            if (ended && players is not null)
+            {
+                await _match.CleanupMatch(id, players);
+            }
         }
     }
 
-    private async Task TryStartMatchAsync(IReadOnlyList<MatchPlayer> players)
+    private async Task SendResponse(Guid guid, Response? response)
     {
-        var start = _match.TryStart(players);
-        if (start is null)
+        if (response is not null)
         {
-            return;
+            foreach (var m in response.Public)
+            {
+                await Clients.Group(guid.ToString()).SendAsync(m.Method, m.Payload);
+            }
+            foreach (var m in response.Private)
+            {
+                await Clients.Client(m.Key).SendAsync(m.Value.Method, m.Value.Payload);
+            }
         }
-
-        await Clients.Client(start.Player1.ConnectionId).MatchStarted(new
-        {
-            you = 1,
-            player1 = start.Player1.Username,
-            player2 = start.Player2.Username,
-            player1Count = start.Player1Count,
-            player2Count = start.Player2Count,
-        });
-        await Clients.Client(start.Player2.ConnectionId).MatchStarted(new
-        {
-            you = 2,
-            player1 = start.Player1.Username,
-            player2 = start.Player2.Username,
-            player1Count = start.Player1Count,
-            player2Count = start.Player2Count,
-        });
     }
-
-    private static object RoundDto(RoundResult round) => new
-    {
-        roundWinner = round.RoundWinner,
-        player1Card = CardDto(round.Player1Card),
-        player2Card = CardDto(round.Player2Card),
-        war = round.War.Select(w => new { player1 = CardDto(w.Player1Card), player2 = CardDto(w.Player2Card) }).ToArray(),
-        player1Count = round.Player1Count,
-        player2Count = round.Player2Count,
-        gameOver = round.GameOver,
-        gameWinner = round.GameWinner,
-    };
-
-    private static object CardDto(Card card) => new
-    { suit = card.Suit.ToString().ToLowerInvariant(), value = card.Value.ToString().ToLowerInvariant() };
-
-    private static object LobbyDto(LobbyState state) => new
-    {
-        capacity = state.Capacity,
-        count = state.Count,
-        players = state.Players.Select(player => player.Username).ToList()
-    };
 }
+
+public record LobbyUpdateDto
+{
+    public int Capacity { get; init; }
+    public int Count { get; init; }
+    public IReadOnlyList<string> Players { get; init; }
+
+    public LobbyUpdateDto(LobbyState state)
+    {
+        Capacity = state.Capacity;
+        Count = state.Count;
+        Players = state.Players.Select(player => player.Username).ToList();
+    }
+};

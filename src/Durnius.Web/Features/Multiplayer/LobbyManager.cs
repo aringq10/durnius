@@ -9,11 +9,6 @@ public class LobbyManager
     private readonly Lock _gate = new();
     private readonly Dictionary<string, string> _occupants = [];
 
-    public LobbyState GetState()
-    {
-        return new(Capacity, _occupants.Count, GetPlayers());
-    }
-
     public (LobbyState? State, bool StartMatch) Join(string connectionId, string username)
     {
         lock (_gate)
@@ -47,15 +42,22 @@ public class LobbyManager
         }
     }
 
-    public bool Remove(string connectionId)
+    public LobbyState? Remove(string connectionId)
     {
         lock (_gate)
         {
-            return _occupants.Remove(connectionId);
+            if (_occupants.Remove(connectionId))
+            {
+                return new(Capacity, _occupants.Count, GetPlayers());
+            }
+            else
+            {
+                return null;
+            }
         }
     }
 
-    public IReadOnlyList<MatchPlayer> GetPlayers()
+    private IReadOnlyList<MatchPlayer> GetPlayers()
     {
         return [.. _occupants.Select(occupant => new MatchPlayer(occupant.Key, occupant.Value))];
     }
