@@ -1,6 +1,7 @@
 using Durnius.Web.Engines.Karas;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using Durnius.Web.Data;
 
 namespace Durnius.Web.Features.Multiplayer;
 
@@ -20,7 +21,7 @@ public interface ILobbyClient
 }
 
 [Authorize]
-public class LobbyHub(LobbyManager lobby, MatchManager match) : Hub<ILobbyClient>
+public class LobbyHub(LobbyManager lobby, MatchManager match, AppDbContext db) : Hub<ILobbyClient>
 {
     private readonly LobbyManager _lobby = lobby;
     private readonly MatchManager _match = match;
@@ -31,6 +32,12 @@ public class LobbyHub(LobbyManager lobby, MatchManager match) : Hub<ILobbyClient
         var r = _match.End(Context.ConnectionId);
         if (r is (var opponent, var winner))
         {
+             db.MatchHistories.Add(new MatchHistory
+            {
+                GameType = "Karas"
+            });
+            await db.SaveChangesAsync();
+            
             await Clients.Client(opponent.ConnectionId).MatchEnded(winner);
         }
 
@@ -97,6 +104,12 @@ public class LobbyHub(LobbyManager lobby, MatchManager match) : Hub<ILobbyClient
 
         if (outcome.MatchEnded)
         {
+            db.MatchHistories.Add(new MatchHistory
+            {
+                GameType = "Karas"
+            });
+            await db.SaveChangesAsync();
+            
             await Clients.Clients(connections).MatchEnded(outcome.Round!.GameWinner);
         }
     }
