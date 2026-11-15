@@ -2,8 +2,6 @@ using Durnius.Web.Engines.Karas;
 
 namespace Durnius.Web.Features.Multiplayer;
 
-public sealed record MatchPlayer(string ConnectionId, string Username);
-
 public sealed record MatchStart(MatchPlayer Player1, MatchPlayer Player2, int Player1Count, int Player2Count);
 
 public sealed class DrawOutcome
