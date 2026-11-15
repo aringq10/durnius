@@ -1,7 +1,6 @@
 using Durnius.Web.Engines.Karas;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
-using Durnius.Web.Data;
 
 namespace Durnius.Web.Features.Multiplayer;
 
@@ -21,10 +20,15 @@ public interface ILobbyClient
 }
 
 [Authorize]
-public class LobbyHub(LobbyManager lobby, MatchManager match, AppDbContext db) : Hub<ILobbyClient>
+public class LobbyHub(
+    LobbyManager lobby,
+    MatchManager match,
+    MatchHistoryRecorder matchHistory) : Hub<ILobbyClient>
 {
     private readonly LobbyManager _lobby = lobby;
     private readonly MatchManager _match = match;
+    private readonly MatchHistoryRecorder _matchHistory = matchHistory;
+
     private string Username => Context.User!.Identity!.Name!;
 
     public override async Task OnDisconnectedAsync(Exception? exception)
@@ -32,12 +36,12 @@ public class LobbyHub(LobbyManager lobby, MatchManager match, AppDbContext db) :
         var r = _match.End(Context.ConnectionId);
         if (r is (var opponent, var winner))
         {
-             db.MatchHistories.Add(new MatchHistory
-            {
-                GameType = "Karas"
-            });
-            await db.SaveChangesAsync();
-            
+            await _matchHistory.RecordAsync(Game.Karas,
+            [
+                new MatchPlacement(opponent, 1),
+                new MatchPlacement(new MatchPlayer(Context.ConnectionId, Username), 2)
+            ]);
+
             await Clients.Client(opponent.ConnectionId).MatchEnded(winner);
         }
 
@@ -104,13 +108,15 @@ public class LobbyHub(LobbyManager lobby, MatchManager match, AppDbContext db) :
 
         if (outcome.MatchEnded)
         {
-            db.MatchHistories.Add(new MatchHistory
-            {
-                GameType = "Karas"
-            });
-            await db.SaveChangesAsync();
-            
-            await Clients.Clients(connections).MatchEnded(outcome.Round!.GameWinner);
+            var winner = outcome.Round!.GameWinner;
+
+            await _matchHistory.RecordAsync(Game.Karas,
+            [
+                new MatchPlacement(outcome.Player1, winner == 1 ? 1 : 2),
+                new MatchPlacement(outcome.Player2, winner == 2 ? 1 : 2)
+            ]);
+
+            await Clients.Clients(connections).MatchEnded(winner);
         }
     }
 
