@@ -45,6 +45,8 @@ public class KarasMatch : ICreatableMatch<KarasMatch>
         _player2 = player2;
     }
 
+    public static int Capacity => 2;
+
     public static (KarasMatch, Response) Create(MatchOptions options)
     {
         if (options.Players.Count != 2)

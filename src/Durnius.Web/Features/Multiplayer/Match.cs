@@ -14,6 +14,8 @@ public interface IMatch
 public interface ICreatableMatch<TSelf> : IMatch where TSelf : ICreatableMatch<TSelf>
 {
     static abstract (TSelf, Response) Create(MatchOptions options);
+
+    static abstract int Capacity { get; }
 }
 
 public record MatchPlayer(string ConnectionId, string Username);
