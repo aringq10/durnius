@@ -1,3 +1,4 @@
 <Solution>
     <Project Path="src/Durnius.Web/Durnius.Web.csproj" />
+    <Project Path="tests/Durnius.Web.Tests/Durnius.Web.Tests.csproj" />
 </Solution>

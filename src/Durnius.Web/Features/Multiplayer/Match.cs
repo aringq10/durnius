@@ -1,14 +1,16 @@
 namespace Durnius.Web.Features.Multiplayer;
 
+// Both `MakeMove` and `Disconnect` are expected to be inclusively atomic, thus locked.
+// On the first occurence that `Ended` is returned as True, a non-empty
+// `Response` may be returned. On subsequent such occurences, `Ended` is
+// expected to be False and `Response` to contain no messages;
 public interface IMatch
 {
-    bool IsRunning { get; }
-
     IReadOnlyList<MatchPlayer> Players { get; }
 
-    Response MakeMove(string connectionId, object move);
+    (bool Ended, Response Response) MakeMove(string connectionId, object move);
 
-    Response Disconnect(string connectionId);
+    (bool Ended, Response Response) Disconnect(string connectionId);
 }
 
 public interface ICreatableMatch<TSelf> : IMatch where TSelf : ICreatableMatch<TSelf>

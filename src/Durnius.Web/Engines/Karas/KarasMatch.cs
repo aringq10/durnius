@@ -37,7 +37,7 @@ public class KarasMatch : ICreatableMatch<KarasMatch>
     private readonly GameEngine _game = new();
     private readonly MatchPlayer _player1;
     private readonly MatchPlayer _player2;
-    private bool _running = true;
+    private bool _ended = false;
 
     private KarasMatch(MatchPlayer player1, MatchPlayer player2)
     {
@@ -60,13 +60,13 @@ public class KarasMatch : ICreatableMatch<KarasMatch>
         return (match, MatchStartedResponse(match._player1, match._player2, counts.Player1, counts.Player2));
     }
 
-    public Response MakeMove(string connectionId, object move)
+    public (bool Ended, Response Response) MakeMove(string connectionId, object move)
     {
         lock (_gate)
         {
-            if (!_running)
+            if (_ended)
             {
-                return new();
+                return (false, new());
             }
 
             RoundResult? round;
@@ -77,7 +77,7 @@ public class KarasMatch : ICreatableMatch<KarasMatch>
                 var r = _game.DrawCardP1();
                 if (r.Card is null)
                 {
-                    return new();
+                    return (_ended, new());
                 }
                 else if (r.Result is null)
                 {
@@ -97,7 +97,7 @@ public class KarasMatch : ICreatableMatch<KarasMatch>
                 var r = _game.DrawCardP2();
                 if (r.Card is null)
                 {
-                    return new();
+                    return (_ended, new());
                 }
                 else if (r.Result is null)
                 {
@@ -114,12 +114,7 @@ public class KarasMatch : ICreatableMatch<KarasMatch>
             }
             else
             {
-                return new();
-            }
-
-            if (round is not null && round.GameOver)
-            {
-                _running = false;
+                return (_ended, new());
             }
 
             List<Message> messages = [
@@ -131,17 +126,23 @@ public class KarasMatch : ICreatableMatch<KarasMatch>
                 messages.Add(RoundResultMessage(round));
             }
 
-            return new(messages);
+            if (round is not null && round.GameOver)
+            {
+                _ended = true;
+                messages.Add(MatchEndedMessage(round.GameWinner));
+            }
+
+            return (_ended, new(messages));
         }
     }
 
-    public Response Disconnect(string connectionId)
+    public (bool Ended, Response Response) Disconnect(string connectionId)
     {
         lock (_gate)
         {
-            if (!_running)
+            if (_ended)
             {
-                return new();
+                return (false, new());
             }
 
             int winner;
@@ -155,22 +156,11 @@ public class KarasMatch : ICreatableMatch<KarasMatch>
             }
             else
             {
-                return new();
+                return (_ended, new());
             }
 
-            _running = false;
-            return MatchEndedResponse(winner);
-        }
-    }
-
-    public bool IsRunning
-    {
-        get
-        {
-            lock (_gate)
-            {
-                return _running;
-            }
+            _ended = true;
+            return (_ended, new([MatchEndedMessage(winner)]));
         }
     }
 
@@ -209,9 +199,9 @@ public class KarasMatch : ICreatableMatch<KarasMatch>
         );
     }
 
-    private static Response MatchEndedResponse(int winner)
+    private static Message MatchEndedMessage(int winner)
     {
-        return new([new("MatchEnded", winner)]);
+        return new("MatchEnded", winner);
     }
 
     private static Message DrawStatusMessage(bool player1Drawn, bool player2Drawn)

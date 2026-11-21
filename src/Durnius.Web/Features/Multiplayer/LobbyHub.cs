@@ -1,111 +1,120 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
-using Durnius.Web.Data;
 
 namespace Durnius.Web.Features.Multiplayer;
 
+/// <summary>
+/// Transport only: coordination state lives in the session store and managers.
+/// </summary>
 [Authorize]
-public class LobbyHub(LobbyManager lobby, MatchManager match) : Hub
+public class LobbyHub(
+    SessionStore sessions,
+    LobbyManager lobby,
+    MatchManager match,
+    MultiplayerCoordinator coordinator,
+    ILogger<LobbyHub> logger) : Hub
 {
+    private readonly SessionStore _sessions = sessions;
     private readonly LobbyManager _lobby = lobby;
     private readonly MatchManager _match = match;
-    private string Username => Context.User!.Identity!.Name!;
-    private Guid? MatchId
+    private readonly MultiplayerCoordinator _coordinator = coordinator;
+    private readonly ILogger<LobbyHub> _logger = logger;
+
+    public override Task OnConnectedAsync()
     {
-        get => _match.GetByConnection(Context.ConnectionId);
+        _sessions.Add(new Session(Context.ConnectionId, Context.User!.Identity!.Name!));
+        return base.OnConnectedAsync();
     }
 
-    public override async Task OnDisconnectedAsync(Exception? exception)
+    public async Task JoinLobby(string lobby)
     {
-        if (MatchId is { } id)
+        var result = await _lobby.JoinAsync(_sessions.Get(Context), lobby);
+
+        if (result.Rejection is { } rejection)
         {
-            var (response, ended, players) = _match.ForwardsDisconnect(id, Context.ConnectionId);
-            await SendResponse(id, response);
-            if (ended && players is not null)
-            {
-                await _match.CleanupMatch(id, players);
-            }
-        }
-
-        await LeaveLobby();
-
-        await base.OnDisconnectedAsync(exception);
-    }
-
-    public async Task JoinLobby()
-    {
-        var (State, StartMatch) = _lobby.Join(Context.ConnectionId, Username);
-        if (State is null)
-        {
-            await Clients.Caller.SendAsync("JoinRejected", "Already in this lobby");
+            await Clients.Caller.SendAsync("JoinRejected", rejection);
             return;
         }
 
-        await Groups.AddToGroupAsync(Context.ConnectionId, "Lobby");
-        await Clients.Group("Lobby").SendAsync("LobbyUpdate", new LobbyUpdateDto(State));
-
-        if (StartMatch)
-        {
-            foreach (var p in State.Players)
-            {
-                await Groups.RemoveFromGroupAsync(p.ConnectionId, "Lobby");
-            }
-
-            var r = await _match.StartNewMatch(Game.Karas, new(State.Players));
-
-            await SendResponse(r.Guid, r.Response);
-        }
+        await Apply(result.Effects!);
     }
 
     public async Task LeaveLobby()
     {
-        var state = _lobby.Remove(Context.ConnectionId);
-        if (state is not null)
+        var effects = await _lobby.LeaveAsync(_sessions.Get(Context));
+        if (effects is not null)
         {
-            await Groups.RemoveFromGroupAsync(Context.ConnectionId, "Lobby");
-            await Clients.Group("Lobby").SendAsync("LobbyUpdate", new LobbyUpdateDto(state));
+            await Apply(effects);
         }
     }
 
     public async Task MakeMove(object move)
     {
-        if (MatchId is { } id)
+        var effects = await _match.ForwardMoveAsync(_sessions.Get(Context), move);
+        if (effects is not null)
         {
-            var (response, ended, players) = _match.ForwardMove(id, Context.ConnectionId, move);
-            await SendResponse(id, response);
-            if (ended && players is not null)
+            await Apply(effects);
+        }
+    }
+
+    public override async Task OnDisconnectedAsync(Exception? exception)
+    {
+        var session = _sessions.TryGet(Context.ConnectionId);
+        if (session is not null)
+        {
+            var effects = await _coordinator.DisconnectAsync(session);
+
+            if (effects is not null)
             {
-                await _match.CleanupMatch(id, players);
+                await Apply(effects);
+            }
+
+            _sessions.Remove(session);
+        }
+
+        await base.OnDisconnectedAsync(exception);
+    }
+
+    private async Task Apply(CoordinationEffects effects)
+    {
+        foreach (var effect in effects.Items)
+        {
+            try
+            {
+                switch (effect)
+                {
+                    case AddToGroupEffect add:
+                        await Groups.AddToGroupAsync(add.ConnectionId, add.Group);
+                        break;
+                    case RemoveFromGroupEffect remove:
+                        await Groups.RemoveFromGroupAsync(remove.ConnectionId, remove.Group);
+                        break;
+                    case LobbyUpdateEffect update:
+                        await Clients.Group(update.LobbyName).SendAsync("LobbyUpdate", update.Update);
+                        break;
+                    case ResponseEffect response:
+                        await SendResponse(response);
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                // Sends happen after state is committed; a failed send must not
+                // roll back (or corrupt) coordination state.
+                _logger.LogError(ex, "Failed to apply SignalR effect {Effect}.", effect);
             }
         }
     }
 
-    private async Task SendResponse(Guid guid, Response? response)
+    private async Task SendResponse(ResponseEffect effect)
     {
-        if (response is not null)
+        foreach (var message in effect.Response.Public)
         {
-            foreach (var m in response.Public)
-            {
-                await Clients.Group(guid.ToString()).SendAsync(m.Method, m.Payload);
-            }
-            foreach (var m in response.Private)
-            {
-                await Clients.Client(m.Key).SendAsync(m.Value.Method, m.Value.Payload);
-            }
+            await Clients.Group(effect.MatchId.ToString()).SendAsync(message.Method, message.Payload);
+        }
+        foreach (var (connectionId, message) in effect.Response.Private)
+        {
+            await Clients.Client(connectionId).SendAsync(message.Method, message.Payload);
         }
     }
 }
-
-public record LobbyUpdateDto
-{
-    public int Capacity { get; init; }
-    public int Count { get; init; }
-    public IReadOnlyList<string> Players { get; init; }
-
-    public LobbyUpdateDto(LobbyState state)
-    {
-        Capacity = state.Capacity;
-        Count = state.Count;
-        Players = state.Players.Select(player => player.Username).ToList();
-    }
-};

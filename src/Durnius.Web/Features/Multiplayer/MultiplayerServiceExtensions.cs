@@ -9,8 +9,10 @@ public static class MultiplayerServiceExtensions
         var registry = new MatchRegistry()
             .Register<KarasMatch>("karas");
 
+        services.AddSingleton<SessionStore>();
         services.AddSingleton<LobbyManager>();
         services.AddSingleton<MatchManager>();
+        services.AddSingleton<MultiplayerCoordinator>();
         services.AddSingleton(registry);
         services.AddSignalR();
 

@@ -1,80 +1,126 @@
 using System.Collections.Concurrent;
-using Microsoft.AspNetCore.SignalR;
 
 namespace Durnius.Web.Features.Multiplayer;
 
-public class MatchManager(IHubContext<LobbyHub> hubContext)
+/// <summary>
+/// Owns match rooms, move/disconnect forwarding and end-of-match cleanup.
+/// </summary>
+/// <remarks>
+/// Lock order: match gate, then session gates. Finalization takes the remaining
+/// player gates under the match gate and is idempotent via
+/// <see cref="MatchRoom.Finalized"/>.
+/// </remarks>
+public sealed class MatchManager(MatchRegistry registry)
 {
-    private readonly ConcurrentDictionary<Guid, IMatch> _matches = [];
-    private readonly ConcurrentDictionary<string, Guid> _matchByConnection = [];
-    private readonly IHubContext<LobbyHub> _hubContext = hubContext;
+    private readonly MatchRegistry _registry = registry;
+    private readonly ConcurrentDictionary<string, MatchRoom> _byConnection = new();
+    private readonly ConcurrentDictionary<Guid, MatchRoom> _active = new();
 
-    public async Task<(Guid Guid, Response Response)> StartNewMatch(Game name, MatchOptions options)
+    public IReadOnlyCollection<Guid> ActiveMatchIds => _active.Keys.ToList();
+
+    public Guid? GetMatchId(string connectionId) =>
+        _byConnection.TryGetValue(connectionId, out var room) ? room.Id : null;
+
+    // Creates a room without publishing it: no session ownership or map writes.
+    internal (MatchRoom Room, Response Response) Create(string name, IReadOnlyList<Session> players)
     {
-        var r = MatchRegistry.GetMatch(name, options);
-
-        var guid = Guid.NewGuid();
-
-        _matches.TryAdd(guid, r.Match);
-        foreach (var p in r.Match.Players)
-        {
-            SetByConnection(p.ConnectionId, guid);
-            await _hubContext.Groups.AddToGroupAsync(p.ConnectionId, guid.ToString());
-        }
-
-        return (guid, r.Response);
+        var options = new MatchOptions(players.Select(p => new MatchPlayer(p.ConnectionId, p.Username)).ToList());
+        var (match, response) = _registry.Create(name, options);
+        return (new MatchRoom(match, players), response);
     }
 
-    public (Response? Response, bool Ended, IReadOnlyList<MatchPlayer>? Players) ForwardMove(Guid guid, string connectionId, object move)
+    // Caller holds the new room's gate and every player's session gate.
+    internal void Publish(MatchRoom room)
     {
-        if (!_matches.TryGetValue(guid, out var match))
+        foreach (var player in room.Players)
         {
-            return (null, false, null);
+            _byConnection[player.ConnectionId] = room;
         }
-
-        var result = match.MakeMove(connectionId, move);
-
-        if (!match.IsRunning)
-        {
-            var players = match.Players;
-            return (result, true, players);
-        }
-
-        return (result, false, null);
+        _active[room.Id] = room;
     }
 
-    public (Response? Response, bool Ended, IReadOnlyList<MatchPlayer>? Players) ForwardsDisconnect(Guid guid, string connectionId)
+    internal void Unpublish(MatchRoom room)
     {
-        if (!_matches.TryGetValue(guid, out var match))
+        foreach (var player in room.Players)
         {
-            return (null, false, null);
+            _byConnection.TryRemove(new KeyValuePair<string, MatchRoom>(player.ConnectionId, room));
         }
-
-        var result = match.Disconnect(connectionId);
-
-        if (!match.IsRunning)
-        {
-            var players = match.Players;
-            return (result, true, players);
-        }
-
-        return (result, false, null);
+        _active.TryRemove(room.Id, out _);
     }
 
-    public async Task CleanupMatch(Guid guid, IReadOnlyList<MatchPlayer> players)
+    public Task<CoordinationEffects?> ForwardMoveAsync(Session session, object move) =>
+        session.RunInRoomAsync<MatchRoom, CoordinationEffects>(
+            room => HandleAsync(room, session, () => room.Match.MakeMove(session.ConnectionId, move)));
+
+    public Task<CoordinationEffects?> ForwardDisconnectAsync(Session session) =>
+        session.RunInRoomAsync<MatchRoom, CoordinationEffects>(
+            room => HandleAsync(room, session, () => room.Match.Disconnect(session.ConnectionId)));
+
+    // Caller already holds room.Gate and session.Gate (disconnect dispatch).
+    internal Task<CoordinationEffects> DisconnectInRoomAsync(Session session, MatchRoom room) =>
+        HandleAsync(room, session, () => room.Match.Disconnect(session.ConnectionId));
+
+    private async Task<CoordinationEffects> HandleAsync(
+        MatchRoom room,
+        Session caller,
+        Func<(bool Ended, Response Response)> action)
     {
-        _matches.TryRemove(guid, out _);
-        foreach (var p in players)
+        if (room.Finalized)
         {
-            ClearByConnection(p.ConnectionId);
-            await _hubContext.Groups.RemoveFromGroupAsync(p.ConnectionId, guid.ToString());
+            return new CoordinationEffects();
         }
+
+        var (ended, response) = action();
+        var effects = new CoordinationEffects();
+
+        if (response is not null)
+        {
+            effects.SendResponse(room.Id, response);
+        }
+
+        if (ended)
+        {
+            await FinalizeAsync(room, caller, effects).ConfigureAwait(false);
+        }
+
+        return effects;
     }
 
-    public Guid? GetByConnection(string connectionId) =>
-        _matchByConnection.TryGetValue(connectionId, out var id) ? id : null;
+    private async Task FinalizeAsync(MatchRoom room, Session caller, CoordinationEffects effects)
+    {
+        var held = new List<Session>();
+        try
+        {
+            foreach (var player in room.Players.OrderBy(p => p.ConnectionId, StringComparer.Ordinal))
+            {
+                if (ReferenceEquals(player, caller))
+                {
+                    continue;
+                }
 
-    private void SetByConnection(string connectionId, Guid matchId) => _matchByConnection[connectionId] = matchId;
+                await player.Gate.WaitAsync().ConfigureAwait(false);
+                held.Add(player);
+            }
 
-    private void ClearByConnection(string connectionId) => _matchByConnection.TryRemove(connectionId, out _);
+            if (room.Finalized)
+            {
+                return;
+            }
+
+            room.Finalized = true;
+            foreach (var player in room.Players)
+            {
+                player.Room = null;
+                effects.RemoveFromGroup(player.ConnectionId, room.Id.ToString());
+            }
+            Unpublish(room);
+        }
+        finally
+        {
+            for (var i = held.Count - 1; i >= 0; i--)
+            {
+                held[i].Gate.Release();
+            }
+        }
+    }
 }
