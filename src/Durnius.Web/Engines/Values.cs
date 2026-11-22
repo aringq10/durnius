@@ -1,4 +1,5 @@
 namespace Durnius.Web.Engines;
+
 public enum Value
 {
     Two = 2,
