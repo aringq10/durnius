@@ -3,8 +3,6 @@ namespace Durnius.Web.Features.Multiplayer;
 // Both `MakeMove` and `Disconnect` are called atomically.
 public interface IMatch
 {
-    IReadOnlyList<MatchPlayer> Players { get; }
-
     (bool Ended, Response Response) MakeMove(string connectionId, object move);
 
     (bool Ended, Response Response) Disconnect(string connectionId);

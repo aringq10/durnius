@@ -40,13 +40,6 @@ public abstract class TestMatchBase : IMatch
     private int _inFlight;
     private bool _ended;
 
-    protected TestMatchBase(MatchOptions options)
-    {
-        Players = options.Players;
-    }
-
-    public IReadOnlyList<MatchPlayer> Players { get; }
-
     public int Moves { get; private set; }
     public int Disconnects { get; private set; }
 
@@ -103,11 +96,9 @@ public sealed class DuelMatch : TestMatchBase, ICreatableMatch<DuelMatch>
 {
     public static int Capacity => 2;
 
-    public DuelMatch(MatchOptions options) : base(options) { }
-
     public static (DuelMatch, Response) Create(MatchOptions options)
     {
-        var match = new DuelMatch(options);
+        var match = new DuelMatch();
         TestState.Register(match, options);
         return (match, TestState.InitialResponse(options));
     }
@@ -117,11 +108,9 @@ public sealed class OtherDuelMatch : TestMatchBase, ICreatableMatch<OtherDuelMat
 {
     public static int Capacity => 2;
 
-    public OtherDuelMatch(MatchOptions options) : base(options) { }
-
     public static (OtherDuelMatch, Response) Create(MatchOptions options)
     {
-        var match = new OtherDuelMatch(options);
+        var match = new OtherDuelMatch();
         TestState.Register(match, options);
         return (match, TestState.InitialResponse(options));
     }
@@ -131,11 +120,9 @@ public sealed class TrioMatch : TestMatchBase, ICreatableMatch<TrioMatch>
 {
     public static int Capacity => 3;
 
-    public TrioMatch(MatchOptions options) : base(options) { }
-
     public static (TrioMatch, Response) Create(MatchOptions options)
     {
-        var match = new TrioMatch(options);
+        var match = new TrioMatch();
         TestState.Register(match, options);
         return (match, TestState.InitialResponse(options));
     }
