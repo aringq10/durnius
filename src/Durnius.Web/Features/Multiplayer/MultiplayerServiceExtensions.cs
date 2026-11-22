@@ -6,6 +6,7 @@ public static class MultiplayerServiceExtensions
     {
         services.AddSingleton<LobbyManager>();
         services.AddSingleton<MatchManager>();
+        services.AddScoped<MatchHistoryRecorder>();
         services.AddSignalR();
 
         return services;
