@@ -379,7 +379,12 @@ export default function Lobby() {
         </p>
 
         <p className="links">
-          <button type="button" onClick={() => navigate("/leaderboard")}>
+          <button
+            type="button"
+            onClick={() => navigate("/leaderboard")}
+            disabled
+            title="Finish your match first"
+          >
             Leaderboard
           </button>
           <button type="button" onClick={handleLogout}>

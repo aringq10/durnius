@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { errorMessage, getLeaderboard } from "../lib/api";
 import type { LeaderboardResponse } from "../lib/api";
 
+/** Wait this long before retrying a failed request. */
 const RETRY_MS = 30_000;
 
 export default function Leaderboard() {
+  const navigate = useNavigate();
   const [board, setBoard] = useState<LeaderboardResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -23,6 +26,7 @@ export default function Leaderboard() {
     }
   }, []);
 
+  // Initial load, plus a retry after failures (retryTick bumps the effect).
   useEffect(() => {
     void load();
   }, [load, retryTick]);
@@ -33,6 +37,7 @@ export default function Leaderboard() {
     return () => window.clearTimeout(timer);
   }, [error]);
 
+  // Refresh exactly when the UTC day rolls over, using the server's boundary.
   useEffect(() => {
     if (!board || loading) return;
     const delay = Math.max(new Date(board.resetAtUtc).getTime() - Date.now(), 0) + 1000;
@@ -85,6 +90,9 @@ export default function Leaderboard() {
       )}
 
       <p className="links">
+        <button type="button" onClick={() => navigate("/lobby")}>
+          Back to Lobby
+        </button>
         <button type="button" onClick={() => void load()} disabled={loading}>
           Refresh
         </button>
