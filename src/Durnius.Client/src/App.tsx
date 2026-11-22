@@ -4,6 +4,7 @@ import { useAuth } from "./auth/AuthContext";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Lobby from "./pages/Lobby";
+import Leaderboard from "./pages/Leaderboard";
 
 function Home() {
   const { isAuthenticated } = useAuth();
@@ -32,6 +33,7 @@ export default function App() {
           </RequireAuth>
         }
       />
+       <Route path="/leaderboard" element={<Leaderboard />} />
       <Route path="*" element={<Home />} />
     </Routes>
   );
