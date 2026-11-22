@@ -32,8 +32,6 @@ public record CardDto
 
 public class KarasMatch : ICreatableMatch<KarasMatch>
 {
-    private readonly Lock _gate = new();
-
     private readonly GameEngine _game = new();
     private readonly MatchPlayer _player1;
     private readonly MatchPlayer _player2;
@@ -62,106 +60,100 @@ public class KarasMatch : ICreatableMatch<KarasMatch>
 
     public (bool Ended, Response Response) MakeMove(string connectionId, object move)
     {
-        lock (_gate)
+        if (_ended)
         {
-            if (_ended)
-            {
-                return (false, new());
-            }
+            return (false, new());
+        }
 
-            RoundResult? round;
-            bool player1Drawn, player2Drawn;
+        RoundResult? round;
+        bool player1Drawn, player2Drawn;
 
-            if (connectionId == _player1.ConnectionId)
-            {
-                var r = _game.DrawCardP1();
-                if (r.Card is null)
-                {
-                    return (_ended, new());
-                }
-                else if (r.Result is null)
-                {
-                    round = r.Result;
-                    player1Drawn = true;
-                    player2Drawn = false;
-                }
-                else
-                {
-                    round = r.Result;
-                    player1Drawn = true;
-                    player2Drawn = true;
-                }
-            }
-            else if (connectionId == _player2.ConnectionId)
-            {
-                var r = _game.DrawCardP2();
-                if (r.Card is null)
-                {
-                    return (_ended, new());
-                }
-                else if (r.Result is null)
-                {
-                    round = r.Result;
-                    player1Drawn = false;
-                    player2Drawn = true;
-                }
-                else
-                {
-                    round = r.Result;
-                    player1Drawn = true;
-                    player2Drawn = true;
-                }
-            }
-            else
+        if (connectionId == _player1.ConnectionId)
+        {
+            var r = _game.DrawCardP1();
+            if (r.Card is null)
             {
                 return (_ended, new());
             }
-
-            List<Message> messages = [
-                DrawStatusMessage(player1Drawn, player2Drawn)
-            ];
-
-            if (round is not null)
+            else if (r.Result is null)
             {
-                messages.Add(RoundResultMessage(round));
+                round = r.Result;
+                player1Drawn = true;
+                player2Drawn = false;
             }
-
-            if (round is not null && round.GameOver)
+            else
             {
-                _ended = true;
-                messages.Add(MatchEndedMessage(round.GameWinner));
+                round = r.Result;
+                player1Drawn = true;
+                player2Drawn = true;
             }
-
-            return (_ended, new(messages));
         }
+        else if (connectionId == _player2.ConnectionId)
+        {
+            var r = _game.DrawCardP2();
+            if (r.Card is null)
+            {
+                return (_ended, new());
+            }
+            else if (r.Result is null)
+            {
+                round = r.Result;
+                player1Drawn = false;
+                player2Drawn = true;
+            }
+            else
+            {
+                round = r.Result;
+                player1Drawn = true;
+                player2Drawn = true;
+            }
+        }
+        else
+        {
+            return (_ended, new());
+        }
+
+        List<Message> messages = [
+            DrawStatusMessage(player1Drawn, player2Drawn)
+        ];
+
+        if (round is not null)
+        {
+            messages.Add(RoundResultMessage(round));
+        }
+
+        if (round is not null && round.GameOver)
+        {
+            _ended = true;
+            messages.Add(MatchEndedMessage(round.GameWinner));
+        }
+
+        return (_ended, new(messages));
     }
 
     public (bool Ended, Response Response) Disconnect(string connectionId)
     {
-        lock (_gate)
+        if (_ended)
         {
-            if (_ended)
-            {
-                return (false, new());
-            }
-
-            int winner;
-            if (connectionId == _player1.ConnectionId)
-            {
-                winner = 2;
-            }
-            else if (connectionId == _player2.ConnectionId)
-            {
-                winner = 1;
-            }
-            else
-            {
-                return (_ended, new());
-            }
-
-            _ended = true;
-            return (_ended, new([MatchEndedMessage(winner)]));
+            return (false, new());
         }
+
+        int winner;
+        if (connectionId == _player1.ConnectionId)
+        {
+            winner = 2;
+        }
+        else if (connectionId == _player2.ConnectionId)
+        {
+            winner = 1;
+        }
+        else
+        {
+            return (_ended, new());
+        }
+
+        _ended = true;
+        return (_ended, new([MatchEndedMessage(winner)]));
     }
 
     public IReadOnlyList<MatchPlayer> Players

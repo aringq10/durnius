@@ -234,6 +234,8 @@ export default function Lobby() {
     try {
       if (method == "MakeMove") {
         await connection.invoke(method, null);
+      } else if (method == "JoinLobby") {
+        await connection.invoke(method, "karas");
       } else {
         await connection.invoke(method);
       }
