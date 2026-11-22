@@ -160,7 +160,7 @@ public class KarasMatch : ICreatableMatch<KarasMatch>
         round.RoundWinner,
         new(round.Player1Card),
         new(round.Player2Card),
-        round.War.Select(w => new WarDto(new(w.Player1Card), new(w.Player2Card))).ToArray(),
+        [.. round.War.Select(w => new WarDto(new(w.Player1Card), new(w.Player2Card)))],
         round.Player1Count,
         round.Player2Count,
         round.GameOver,
@@ -179,7 +179,8 @@ public class KarasMatch : ICreatableMatch<KarasMatch>
         );
 
         return new(
-            privateByPlayer: new Dictionary<MatchPlayer, Message> {
+            privateByPlayer: new Dictionary<MatchPlayer, Message>
+            {
                 [player1] = player1Message,
                 [player2] = player2Message
             }

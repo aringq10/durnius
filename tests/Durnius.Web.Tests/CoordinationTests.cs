@@ -96,7 +96,7 @@ public sealed class CoordinationTests
         var response = Effect<ResponseEffect>(effectsB);
         Assert.NotNull(response);
         Assert.Equal(response.MatchId, Assert.Single(matches.ActiveMatchIds));
-        Assert.Equal(["a", "b"], TestState.LastOptions!.Select(p => p.ConnectionId).ToArray());
+        Assert.Equal(["a", "b"], [.. TestState.LastOptions!.Select(p => p.ConnectionId)]);
         Assert.Single(response.Response.Public);
         Assert.Equal(response.MatchId, matches.GetMatchId("a"));
         Assert.Equal(response.MatchId, matches.GetMatchId("b"));

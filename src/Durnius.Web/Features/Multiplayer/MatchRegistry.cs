@@ -24,7 +24,5 @@ public class MatchRegistry
         Get(name).Capacity;
 
     public List<(string Name, int Capacity)> GetAll() =>
-        _entries
-            .Select(kv => (Name: kv.Key, kv.Value.Capacity))
-            .ToList();
+        [.. _entries.Select(kv => (Name: kv.Key, kv.Value.Capacity))];
 }
