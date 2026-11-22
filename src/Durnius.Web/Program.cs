@@ -1,5 +1,6 @@
 using Durnius.Web.Data;
 using Durnius.Web.Features.Account;
+using Durnius.Web.Features.Leaderboard;
 using Durnius.Web.Features.Multiplayer;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,6 +16,7 @@ builder.Services.AddControllers();
 builder.Services
     .AddJwtAuthentication(builder.Configuration)
     .AddAccountServices()
+    .AddLeaderboard()
     .AddMultiplayer();
 
 if (builder.Environment.IsDevelopment())

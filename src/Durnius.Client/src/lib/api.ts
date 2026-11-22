@@ -95,3 +95,20 @@ export function getJson<T>(path: string, token?: string | null): Promise<T> {
     handle<T>(response)
   );
 }
+
+export interface LeaderboardEntry {
+  rank: number;
+  userId: number;
+  username: string;
+  wins: number;
+}
+
+export interface LeaderboardResponse {
+  periodStartUtc: string;
+  resetAtUtc: string;
+  entries: LeaderboardEntry[];
+}
+
+export function getLeaderboard(): Promise<LeaderboardResponse> {
+  return getJson<LeaderboardResponse>("/api/leaderboard");
+}
