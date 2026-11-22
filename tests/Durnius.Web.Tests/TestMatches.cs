@@ -34,14 +34,12 @@ public static class TestState
         new([new Message("MatchStarted", options.Players.Count)]);
 }
 
-public abstract class TestMatchBase : IMatch
+public abstract class TestMatchBase(MatchOptions options) : IMatch
 {
     private readonly Lock _gate = new();
-    private readonly IReadOnlyList<MatchPlayer> _players;
+    private readonly IReadOnlyList<MatchPlayer> _players = options.Players;
     private int _inFlight;
     private bool _ended;
-
-    protected TestMatchBase(MatchOptions options) => _players = options.Players;
 
     public int Moves { get; private set; }
     public int Disconnects { get; private set; }
