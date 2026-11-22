@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Durnius.Web.Common;
+using Durnius.Web.Data;
 
 namespace Durnius.Web.Features.Account;
 
@@ -19,7 +21,7 @@ public class AccountController(
     {
         var result = await _accountService.LoginAsync(request.Username, request.Password);
 
-        if (result.Status == AccountResultStatus.InvalidCredentials)
+        if (result.Error == AccountError.InvalidCredentials)
         {
             _logger.LogWarning("Failed login attempt for user: {Username}", request.Username);
         }
@@ -36,24 +38,21 @@ public class AccountController(
         return ToActionResult(result);
     }
 
-    private IActionResult ToActionResult(AccountResult result)
+    private IActionResult ToActionResult(ServiceResult<User, AccountError> result)
     {
-        if (!result.Succeeded)
-        {
-            var body = new { errors = result.Errors };
-
-            return result.Status switch
+        return result.Match<IActionResult>(
+            user => Ok(new AuthResponse(_tokenService.GenerateToken(user), "Bearer")),
+            (error, messages) =>
             {
-                AccountResultStatus.ValidationFailed => BadRequest(body),
-                AccountResultStatus.InvalidCredentials => Unauthorized(body),
-                AccountResultStatus.UsernameTaken => Conflict(body),
-                _ => StatusCode(StatusCodes.Status500InternalServerError)
-            };
-        }
-
-        var token = _tokenService.GenerateToken(result.User!);
-
-        return Ok(new AuthResponse(token, "Bearer"));
+                var body = new { errors = messages };
+                return error switch
+                {
+                    AccountError.ValidationFailed => BadRequest(body),
+                    AccountError.InvalidCredentials => Unauthorized(body),
+                    AccountError.UsernameTaken => Conflict(body),
+                    _ => StatusCode(StatusCodes.Status500InternalServerError)
+                };
+            });
     }
 }
 

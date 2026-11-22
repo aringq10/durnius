@@ -1,29 +1,23 @@
 using Durnius.Web.Data;
 using Microsoft.EntityFrameworkCore;
+using Durnius.Web.Common;
 
 namespace Durnius.Web.Features.Account;
 
 public interface IAccountService
 {
     IReadOnlyList<string> ValidateInput(string? username, string? password);
-    Task<AccountResult> LoginAsync(string? username, string? password);
-    Task<AccountResult> RegisterAsync(string? username, string? password);
+    Task<ServiceResult<User, AccountError>> LoginAsync(
+        string? username, string? password);
+    Task<ServiceResult<User, AccountError>> RegisterAsync(
+        string? username, string? password);
 }
 
-public enum AccountResultStatus
+public enum AccountError
 {
-    Success,
     ValidationFailed,
     InvalidCredentials,
     UsernameTaken
-}
-
-public sealed record AccountResult(
-    AccountResultStatus Status,
-    User? User,
-    IReadOnlyList<string> Errors)
-{
-    public bool Succeeded => Status == AccountResultStatus.Success;
 }
 
 public class AccountService(AppDbContext db) : IAccountService
@@ -59,40 +53,42 @@ public class AccountService(AppDbContext db) : IAccountService
         return errors;
     }
 
-    public async Task<AccountResult> LoginAsync(string? username, string? password)
+    public async Task<ServiceResult<User, AccountError>> LoginAsync(
+        string? username, string? password)
     {
         var errors = ValidateInput(username, password);
         if (errors.Count > 0)
         {
-            return new AccountResult(AccountResultStatus.ValidationFailed, null, errors);
+            return ServiceResult<User, AccountError>.Failure(
+                AccountError.ValidationFailed, errors);
         }
 
         var user = await _db.Users.SingleOrDefaultAsync(u => u.Username == username);
 
         if (user is null || !BCrypt.Net.BCrypt.Verify(password!, user.PasswordHash))
         {
-            return new AccountResult(
-                AccountResultStatus.InvalidCredentials,
-                null,
+            return ServiceResult<User, AccountError>.Failure(
+                AccountError.InvalidCredentials,
                 ["Invalid username or password."]);
         }
 
-        return new AccountResult(AccountResultStatus.Success, user, []);
+        return ServiceResult<User, AccountError>.Success(user);
     }
 
-    public async Task<AccountResult> RegisterAsync(string? username, string? password)
+    public async Task<ServiceResult<User, AccountError>> RegisterAsync(
+        string? username, string? password)
     {
         var errors = ValidateInput(username, password);
         if (errors.Count > 0)
         {
-            return new AccountResult(AccountResultStatus.ValidationFailed, null, errors);
+            return ServiceResult<User, AccountError>.Failure(
+                AccountError.ValidationFailed, errors);
         }
 
         if (await _db.Users.AnyAsync(u => u.Username == username))
         {
-            return new AccountResult(
-                AccountResultStatus.UsernameTaken,
-                null,
+            return ServiceResult<User, AccountError>.Failure(
+                AccountError.UsernameTaken,
                 ["Username already taken."]);
         }
 
@@ -105,6 +101,6 @@ public class AccountService(AppDbContext db) : IAccountService
         _db.Users.Add(user);
         await _db.SaveChangesAsync();
 
-        return new AccountResult(AccountResultStatus.Success, user, []);
+        return ServiceResult<User, AccountError>.Success(user);
     }
 }
