@@ -3,8 +3,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Durnius.Web.Features.Multiplayer;
 
-public sealed record MatchPlacement(MatchPlayer Player, int Placement);
-
 /// <summary>
 /// Persists a finished match and one <see cref="MatchParticipant"/> per player.
 /// The number of placements depends on the game, so games with more than two
@@ -15,7 +13,7 @@ public class MatchHistoryRecorder(AppDbContext db, ILogger<MatchHistoryRecorder>
     private readonly AppDbContext _db = db;
     private readonly ILogger<MatchHistoryRecorder> _logger = logger;
 
-    public async Task RecordAsync(Game game, IReadOnlyList<MatchPlacement> placements)
+    public async Task RecordAsync(string game, IReadOnlyList<MatchPlacement> placements)
     {
         var usernames = placements
             .Select(placement => placement.Player.Username)
@@ -52,12 +50,8 @@ public class MatchHistoryRecorder(AppDbContext db, ILogger<MatchHistoryRecorder>
 
         _db.MatchHistories.Add(new MatchHistory
         {
-            GameType = game.ToString(),
+            GameType = game,
             MatchDate = DateTime.UtcNow,
-            MatchResult = participants
-                .Where(participant => participant.Placement == 1)
-                .Select(participant => (int?)participant.UserId)
-                .FirstOrDefault(),
             Participants = participants
         });
 

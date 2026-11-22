@@ -1,170 +1,125 @@
-using Durnius.Web.Engines.Karas;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
 namespace Durnius.Web.Features.Multiplayer;
 
-public interface ILobbyClient
-{
-    Task JoinRejected(string reason);
-
-    Task LobbyUpdate(object state);
-
-    Task MatchStarted(object state);
-
-    Task MatchEnded(int winner);
-
-    Task DrawStatus(object state);
-
-    Task RoundResult(object state);
-}
-
+/// <summary>
+/// Transport only: coordination state lives in the session store and managers.
+/// </summary>
 [Authorize]
 public class LobbyHub(
+    SessionStore sessions,
     LobbyManager lobby,
     MatchManager match,
-    MatchHistoryRecorder matchHistory) : Hub<ILobbyClient>
+    MultiplayerCoordinator coordinator,
+    MatchHistoryRecorder matchHistory,
+    ILogger<LobbyHub> logger) : Hub
 {
+    private readonly SessionStore _sessions = sessions;
     private readonly LobbyManager _lobby = lobby;
     private readonly MatchManager _match = match;
+    private readonly MultiplayerCoordinator _coordinator = coordinator;
     private readonly MatchHistoryRecorder _matchHistory = matchHistory;
+    private readonly ILogger<LobbyHub> _logger = logger;
 
-    private string Username => Context.User!.Identity!.Name!;
-
-    public override async Task OnDisconnectedAsync(Exception? exception)
+    public override Task OnConnectedAsync()
     {
-        var r = _match.End(Context.ConnectionId);
-        if (r is (var opponent, var winner))
-        {
-            await _matchHistory.RecordAsync(Game.Karas,
-            [
-                new MatchPlacement(opponent, 1),
-                new MatchPlacement(new MatchPlayer(Context.ConnectionId, Username), 2)
-            ]);
-
-            await Clients.Client(opponent.ConnectionId).MatchEnded(winner);
-        }
-
-        await LeaveLobby();
-
-        await base.OnDisconnectedAsync(exception);
+        _sessions.Add(new Session(Context.ConnectionId, Context.User!.Identity!.Name!));
+        return base.OnConnectedAsync();
     }
 
-    public async Task JoinLobby()
+    public async Task JoinLobby(string lobby)
     {
-        if (_match.IsRunning)
+        var result = await _lobby.JoinAsync(_sessions.Get(Context), lobby);
+
+        if (result.Rejection is { } rejection)
         {
-            await Clients.Caller.JoinRejected("Ongoing match");
+            await Clients.Caller.SendAsync("JoinRejected", rejection);
             return;
         }
 
-        var (State, StartMatch) = _lobby.Join(Context.ConnectionId, Username);
-        if (State is null)
-        {
-            await Clients.Caller.JoinRejected("Already in this lobby");
-            return;
-        }
-
-        await Groups.AddToGroupAsync(Context.ConnectionId, "Lobby");
-
-        await Clients.Group("Lobby").LobbyUpdate(LobbyDto(State));
-
-        if (StartMatch)
-        {
-            await TryStartMatchAsync(State.Players);
-        }
+        await Apply(result.Effects!);
     }
 
     public async Task LeaveLobby()
     {
-        var removed = _lobby.Remove(Context.ConnectionId);
-        if (removed)
+        var effects = await _lobby.LeaveAsync(_sessions.Get(Context));
+        if (effects is not null)
         {
-            await Groups.RemoveFromGroupAsync(Context.ConnectionId, "Lobby");
-            await Clients.Group("Lobby").LobbyUpdate(LobbyDto(_lobby.GetState()));
+            await Apply(effects);
         }
     }
 
-    /// <summary>Marks this player's draw for the round; resolves the round once both have drawn.</summary>
-    public async Task Draw()
+    public async Task MakeMove(object move)
     {
-        var outcome = _match.Draw(Context.ConnectionId);
-        if (outcome is null)
+        var effects = await _match.ForwardMoveAsync(_sessions.Get(Context), move);
+        if (effects is not null)
         {
-            return;
-        }
-
-        var connections = new[] { outcome.Player1.ConnectionId, outcome.Player2.ConnectionId };
-        await Clients.Clients(connections).DrawStatus(new
-        {
-            player1Drawn = outcome.Player1Drawn,
-            player2Drawn = outcome.Player2Drawn,
-        });
-
-        if (outcome.Round is not null)
-        {
-            await Clients.Clients(connections).RoundResult(RoundDto(outcome.Round));
-        }
-
-        if (outcome.MatchEnded)
-        {
-            var winner = outcome.Round!.GameWinner;
-
-            await _matchHistory.RecordAsync(Game.Karas,
-            [
-                new MatchPlacement(outcome.Player1, winner == 1 ? 1 : 2),
-                new MatchPlacement(outcome.Player2, winner == 2 ? 1 : 2)
-            ]);
-
-            await Clients.Clients(connections).MatchEnded(winner);
+            await Apply(effects);
         }
     }
 
-    private async Task TryStartMatchAsync(IReadOnlyList<MatchPlayer> players)
+    public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        var start = _match.TryStart(players);
-        if (start is null)
+        var session = _sessions.TryGet(Context.ConnectionId);
+        if (session is not null)
         {
-            return;
+            var effects = await _coordinator.DisconnectAsync(session);
+
+            if (effects is not null)
+            {
+                await Apply(effects);
+            }
+
+            _sessions.Remove(session);
         }
 
-        await Clients.Client(start.Player1.ConnectionId).MatchStarted(new
-        {
-            you = 1,
-            player1 = start.Player1.Username,
-            player2 = start.Player2.Username,
-            player1Count = start.Player1Count,
-            player2Count = start.Player2Count,
-        });
-        await Clients.Client(start.Player2.ConnectionId).MatchStarted(new
-        {
-            you = 2,
-            player1 = start.Player1.Username,
-            player2 = start.Player2.Username,
-            player1Count = start.Player1Count,
-            player2Count = start.Player2Count,
-        });
+        await base.OnDisconnectedAsync(exception);
     }
 
-    private static object RoundDto(RoundResult round) => new
+    private async Task Apply(CoordinationEffects effects)
     {
-        roundWinner = round.RoundWinner,
-        player1Card = CardDto(round.Player1Card),
-        player2Card = CardDto(round.Player2Card),
-        war = round.War.Select(w => new { player1 = CardDto(w.Player1Card), player2 = CardDto(w.Player2Card) }).ToArray(),
-        player1Count = round.Player1Count,
-        player2Count = round.Player2Count,
-        gameOver = round.GameOver,
-        gameWinner = round.GameWinner,
-    };
+        foreach (var effect in effects.Items)
+        {
+            try
+            {
+                switch (effect)
+                {
+                    case AddToGroupEffect add:
+                        await Groups.AddToGroupAsync(add.ConnectionId, add.Group);
+                        break;
+                    case RemoveFromGroupEffect remove:
+                        await Groups.RemoveFromGroupAsync(remove.ConnectionId, remove.Group);
+                        break;
+                    case LobbyUpdateEffect update:
+                        await Clients.Group(update.LobbyName).SendAsync("LobbyUpdate", update.Update);
+                        break;
+                    case ResponseEffect response:
+                        await SendResponse(response);
+                        break;
+                    case RecordMatchEffect record:
+                        await _matchHistory.RecordAsync(record.Game, record.Result.Placements);
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                // Sends happen after state is committed; a failed send must not
+                // roll back (or corrupt) coordination state.
+                _logger.LogError(ex, "Failed to apply SignalR effect {Effect}.", effect);
+            }
+        }
+    }
 
-    private static object CardDto(Card card) => new
-    { suit = card.Suit.ToString().ToLowerInvariant(), value = card.Value.ToString().ToLowerInvariant() };
-
-    private static object LobbyDto(LobbyState state) => new
+    private async Task SendResponse(ResponseEffect effect)
     {
-        capacity = state.Capacity,
-        count = state.Count,
-        players = state.Players.Select(player => player.Username).ToList()
-    };
+        foreach (var message in effect.Response.Public)
+        {
+            await Clients.Group(effect.MatchId.ToString()).SendAsync(message.Method, message.Payload);
+        }
+        foreach (var (connectionId, message) in effect.Response.Private)
+        {
+            await Clients.Client(connectionId).SendAsync(message.Method, message.Payload);
+        }
+    }
 }

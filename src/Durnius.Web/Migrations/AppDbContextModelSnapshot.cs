@@ -40,9 +40,6 @@ namespace Durnius.Web.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-                    b.Property<int?>("MatchResult")
-                        .HasColumnType("integer");
-
                     b.HasKey("Id");
 
                     b.ToTable("MatchHistories");

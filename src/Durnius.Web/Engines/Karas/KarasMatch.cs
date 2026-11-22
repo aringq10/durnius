@@ -32,18 +32,18 @@ public record CardDto
 
 public class KarasMatch : ICreatableMatch<KarasMatch>
 {
-    private readonly Lock _gate = new();
-
     private readonly GameEngine _game = new();
     private readonly MatchPlayer _player1;
     private readonly MatchPlayer _player2;
-    private bool _running = true;
+    private bool _ended = false;
 
     private KarasMatch(MatchPlayer player1, MatchPlayer player2)
     {
         _player1 = player1;
         _player2 = player2;
     }
+
+    public static int Capacity => 2;
 
     public static (KarasMatch, Response) Create(MatchOptions options)
     {
@@ -58,130 +58,110 @@ public class KarasMatch : ICreatableMatch<KarasMatch>
         return (match, MatchStartedResponse(match._player1, match._player2, counts.Player1, counts.Player2));
     }
 
-    public Response MakeMove(string connectionId, object move)
+    public (MatchResult? Result, Response Response) MakeMove(string connectionId, object move)
     {
-        lock (_gate)
+        if (_ended)
         {
-            if (!_running)
-            {
-                return new();
-            }
+            return (null, new());
+        }
 
-            RoundResult? round;
-            bool player1Drawn, player2Drawn;
+        RoundResult? round;
+        bool player1Drawn, player2Drawn;
 
-            if (connectionId == _player1.ConnectionId)
+        if (connectionId == _player1.ConnectionId)
+        {
+            var r = _game.DrawCardP1();
+            if (r.Card is null)
             {
-                var r = _game.DrawCardP1();
-                if (r.Card is null)
-                {
-                    return new();
-                }
-                else if (r.Result is null)
-                {
-                    round = r.Result;
-                    player1Drawn = true;
-                    player2Drawn = false;
-                }
-                else
-                {
-                    round = r.Result;
-                    player1Drawn = true;
-                    player2Drawn = true;
-                }
+                return (null, new());
             }
-            else if (connectionId == _player2.ConnectionId)
+            else if (r.Result is null)
             {
-                var r = _game.DrawCardP2();
-                if (r.Card is null)
-                {
-                    return new();
-                }
-                else if (r.Result is null)
-                {
-                    round = r.Result;
-                    player1Drawn = false;
-                    player2Drawn = true;
-                }
-                else
-                {
-                    round = r.Result;
-                    player1Drawn = true;
-                    player2Drawn = true;
-                }
+                round = r.Result;
+                player1Drawn = true;
+                player2Drawn = false;
             }
             else
             {
-                return new();
+                round = r.Result;
+                player1Drawn = true;
+                player2Drawn = true;
             }
-
-            if (round is not null && round.GameOver)
-            {
-                _running = false;
-            }
-
-            List<Message> messages = [
-                DrawStatusMessage(player1Drawn, player2Drawn)
-            ];
-
-            if (round is not null)
-            {
-                messages.Add(RoundResultMessage(round));
-            }
-
-            return new(messages);
         }
-    }
-
-    public Response Disconnect(string connectionId)
-    {
-        lock (_gate)
+        else if (connectionId == _player2.ConnectionId)
         {
-            if (!_running)
+            var r = _game.DrawCardP2();
+            if (r.Card is null)
             {
-                return new();
+                return (null, new());
             }
-
-            int winner;
-            if (connectionId == _player1.ConnectionId)
+            else if (r.Result is null)
             {
-                winner = 2;
-            }
-            else if (connectionId == _player2.ConnectionId)
-            {
-                winner = 1;
+                round = r.Result;
+                player1Drawn = false;
+                player2Drawn = true;
             }
             else
             {
-                return new();
+                round = r.Result;
+                player1Drawn = true;
+                player2Drawn = true;
             }
-
-            _running = false;
-            return MatchEndedResponse(winner);
         }
-    }
-
-    public bool IsRunning
-    {
-        get
+        else
         {
-            lock (_gate)
-            {
-                return _running;
-            }
+            return (null, new());
         }
+
+        List<Message> messages = [
+            DrawStatusMessage(player1Drawn, player2Drawn)
+        ];
+
+        if (round is not null)
+        {
+            messages.Add(RoundResultMessage(round));
+        }
+
+        if (round is not null && round.GameOver)
+        {
+            _ended = true;
+            messages.Add(MatchEndedMessage(round.GameWinner));
+            return (WinnerResult(round.GameWinner), new(messages));
+        }
+
+        return (null, new(messages));
     }
 
-    public IReadOnlyList<MatchPlayer> Players
+    public (MatchResult? Result, Response Response) Disconnect(string connectionId)
     {
-        get => [_player1, _player2];
+        if (_ended)
+        {
+            return (null, new());
+        }
+
+        int winner;
+        if (connectionId == _player1.ConnectionId)
+        {
+            winner = 2;
+        }
+        else if (connectionId == _player2.ConnectionId)
+        {
+            winner = 1;
+        }
+        else
+        {
+            return (null, new());
+        }
+
+        _ended = true;
+        return (WinnerResult(winner), new([MatchEndedMessage(winner)]));
     }
 
     private static RoundResultDto ToDto(RoundResult round) => new(
         round.RoundWinner,
         new(round.Player1Card),
         new(round.Player2Card),
-        round.War.Select(w => new WarDto(new(w.Player1Card), new(w.Player2Card))).ToArray(),
+        [.. round.War.Select(w => new WarDto(new(w.Player1Card), new(w.Player2Card)))],
         round.Player1Count,
         round.Player2Count,
         round.GameOver,
@@ -200,16 +180,27 @@ public class KarasMatch : ICreatableMatch<KarasMatch>
         );
 
         return new(
-            privateByPlayer: new Dictionary<MatchPlayer, Message> {
+            privateByPlayer: new Dictionary<MatchPlayer, Message>
+            {
                 [player1] = player1Message,
                 [player2] = player2Message
             }
         );
     }
 
-    private static Response MatchEndedResponse(int winner)
+    private MatchResult WinnerResult(int winner)
     {
-        return new([new("MatchEnded", winner)]);
+        var winnerPlayer = winner == 1 ? _player1 : _player2;
+        var loserPlayer = winner == 1 ? _player2 : _player1;
+        return new MatchResult([
+            new MatchPlacement(winnerPlayer, 1),
+            new MatchPlacement(loserPlayer, 2)
+        ]);
+    }
+
+    private static Message MatchEndedMessage(int winner)
+    {
+        return new("MatchEnded", winner);
     }
 
     private static Message DrawStatusMessage(bool player1Drawn, bool player2Drawn)
