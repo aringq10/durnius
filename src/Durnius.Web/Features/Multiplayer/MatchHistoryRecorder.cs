@@ -52,10 +52,6 @@ public class MatchHistoryRecorder(AppDbContext db, ILogger<MatchHistoryRecorder>
         {
             GameType = game,
             MatchDate = DateTime.UtcNow,
-            MatchResult = participants
-                .Where(participant => participant.Placement == 1)
-                .Select(participant => (int?)participant.UserId)
-                .FirstOrDefault(),
             Participants = participants
         });
 
