@@ -147,6 +147,19 @@ public sealed class CoordinationTests
     }
 
     [Fact]
+    public async Task OrdinaryMoveDoesNotRecordMatchHistory()
+    {
+        var (lobby, matches, _, _) = NewSystem();
+        var a = S("a");
+        var b = S("b");
+        await FillDuo(lobby, a, b);
+
+        var effects = await matches.ForwardMoveAsync(a, new object());
+
+        Assert.Null(Effect<RecordMatchEffect>(effects));
+    }
+
+    [Fact]
     public async Task MoveAfterEndIsNoOpAndMatchIsCleanedUp()
     {
         var (lobby, matches, _, _) = NewSystem();
@@ -158,6 +171,11 @@ public sealed class CoordinationTests
 
         var ending = await matches.ForwardMoveAsync(a, new object());
         Assert.NotNull(Effect<ResponseEffect>(ending));
+        var record = Effect<RecordMatchEffect>(ending);
+        Assert.NotNull(record);
+        Assert.Equal("duo", record.Game);
+        Assert.Equal(["a", "b"], record.Result.Placements.Select(p => p.Player.Username));
+        Assert.Equal([1, 2], record.Result.Placements.Select(p => p.Placement));
         Assert.Empty(matches.ActiveMatchIds);
         Assert.Null(matches.GetMatchId("a"));
         Assert.Null(matches.GetMatchId("b"));
@@ -196,6 +214,11 @@ public sealed class CoordinationTests
         var response = Effect<ResponseEffect>(effects);
         Assert.NotNull(response);
         Assert.Contains(response.Response.Public, m => m.Method == "MatchEnded");
+        var record = Effect<RecordMatchEffect>(effects);
+        Assert.NotNull(record);
+        Assert.Equal("duo", record.Game);
+        Assert.Equal(["b", "a"], record.Result.Placements.Select(p => p.Player.Username));
+        Assert.Equal([1, 2], record.Result.Placements.Select(p => p.Placement));
         Assert.Empty(matches.ActiveMatchIds);
         Assert.Null(matches.GetMatchId("a"));
         Assert.Null(matches.GetMatchId("b"));

@@ -14,6 +14,8 @@ public sealed record LobbyUpdateEffect(string LobbyName, LobbyUpdateDto Update) 
 
 public sealed record ResponseEffect(Guid MatchId, Response Response) : CoordinationEffect;
 
+public sealed record RecordMatchEffect(string Game, MatchResult Result) : CoordinationEffect;
+
 public sealed class CoordinationEffects
 {
     private readonly List<CoordinationEffect> _items = [];
@@ -33,4 +35,7 @@ public sealed class CoordinationEffects
 
     public void SendResponse(Guid matchId, Response response) =>
         _items.Add(new ResponseEffect(matchId, response));
+
+    public void RecordMatch(string game, MatchResult result) =>
+        _items.Add(new RecordMatchEffect(game, result));
 }

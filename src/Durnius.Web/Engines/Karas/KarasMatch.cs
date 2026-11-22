@@ -58,11 +58,11 @@ public class KarasMatch : ICreatableMatch<KarasMatch>
         return (match, MatchStartedResponse(match._player1, match._player2, counts.Player1, counts.Player2));
     }
 
-    public (bool Ended, Response Response) MakeMove(string connectionId, object move)
+    public (MatchResult? Result, Response Response) MakeMove(string connectionId, object move)
     {
         if (_ended)
         {
-            return (false, new());
+            return (null, new());
         }
 
         RoundResult? round;
@@ -73,7 +73,7 @@ public class KarasMatch : ICreatableMatch<KarasMatch>
             var r = _game.DrawCardP1();
             if (r.Card is null)
             {
-                return (_ended, new());
+                return (null, new());
             }
             else if (r.Result is null)
             {
@@ -93,7 +93,7 @@ public class KarasMatch : ICreatableMatch<KarasMatch>
             var r = _game.DrawCardP2();
             if (r.Card is null)
             {
-                return (_ended, new());
+                return (null, new());
             }
             else if (r.Result is null)
             {
@@ -110,7 +110,7 @@ public class KarasMatch : ICreatableMatch<KarasMatch>
         }
         else
         {
-            return (_ended, new());
+            return (null, new());
         }
 
         List<Message> messages = [
@@ -126,16 +126,17 @@ public class KarasMatch : ICreatableMatch<KarasMatch>
         {
             _ended = true;
             messages.Add(MatchEndedMessage(round.GameWinner));
+            return (WinnerResult(round.GameWinner), new(messages));
         }
 
-        return (_ended, new(messages));
+        return (null, new(messages));
     }
 
-    public (bool Ended, Response Response) Disconnect(string connectionId)
+    public (MatchResult? Result, Response Response) Disconnect(string connectionId)
     {
         if (_ended)
         {
-            return (false, new());
+            return (null, new());
         }
 
         int winner;
@@ -149,11 +150,11 @@ public class KarasMatch : ICreatableMatch<KarasMatch>
         }
         else
         {
-            return (_ended, new());
+            return (null, new());
         }
 
         _ended = true;
-        return (_ended, new([MatchEndedMessage(winner)]));
+        return (WinnerResult(winner), new([MatchEndedMessage(winner)]));
     }
 
     private static RoundResultDto ToDto(RoundResult round) => new(
@@ -185,6 +186,16 @@ public class KarasMatch : ICreatableMatch<KarasMatch>
                 [player2] = player2Message
             }
         );
+    }
+
+    private MatchResult WinnerResult(int winner)
+    {
+        var winnerPlayer = winner == 1 ? _player1 : _player2;
+        var loserPlayer = winner == 1 ? _player2 : _player1;
+        return new MatchResult([
+            new MatchPlacement(winnerPlayer, 1),
+            new MatchPlacement(loserPlayer, 2)
+        ]);
     }
 
     private static Message MatchEndedMessage(int winner)

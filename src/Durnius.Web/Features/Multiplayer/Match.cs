@@ -1,11 +1,12 @@
 namespace Durnius.Web.Features.Multiplayer;
 
-// Both `MakeMove` and `Disconnect` are called atomically.
+// Both `MakeMove` and `Disconnect` are called atomically. A non-null result
+// means the match ended; a null result means it is still running.
 public interface IMatch
 {
-    (bool Ended, Response Response) MakeMove(string connectionId, object move);
+    (MatchResult? Result, Response Response) MakeMove(string connectionId, object move);
 
-    (bool Ended, Response Response) Disconnect(string connectionId);
+    (MatchResult? Result, Response Response) Disconnect(string connectionId);
 }
 
 public interface ICreatableMatch<TSelf> : IMatch where TSelf : ICreatableMatch<TSelf>

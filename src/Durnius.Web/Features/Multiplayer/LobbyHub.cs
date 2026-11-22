@@ -12,12 +12,14 @@ public class LobbyHub(
     LobbyManager lobby,
     MatchManager match,
     MultiplayerCoordinator coordinator,
+    MatchHistoryRecorder matchHistory,
     ILogger<LobbyHub> logger) : Hub
 {
     private readonly SessionStore _sessions = sessions;
     private readonly LobbyManager _lobby = lobby;
     private readonly MatchManager _match = match;
     private readonly MultiplayerCoordinator _coordinator = coordinator;
+    private readonly MatchHistoryRecorder _matchHistory = matchHistory;
     private readonly ILogger<LobbyHub> _logger = logger;
 
     public override Task OnConnectedAsync()
@@ -94,6 +96,9 @@ public class LobbyHub(
                         break;
                     case ResponseEffect response:
                         await SendResponse(response);
+                        break;
+                    case RecordMatchEffect record:
+                        await _matchHistory.RecordAsync(record.Game, record.Result.Placements);
                         break;
                 }
             }

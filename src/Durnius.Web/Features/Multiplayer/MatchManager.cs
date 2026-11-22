@@ -26,7 +26,7 @@ public sealed class MatchManager(MatchRegistry registry)
     {
         var options = new MatchOptions(players.Select(p => new MatchPlayer(p.ConnectionId, p.Username)).ToList());
         var (match, response) = _registry.Create(name, options);
-        return (new MatchRoom(match, players), response);
+        return (new MatchRoom(match, players, name), response);
     }
 
     // Caller holds the new room's gate and every player's session gate.
@@ -59,14 +59,14 @@ public sealed class MatchManager(MatchRegistry registry)
     private async Task<CoordinationEffects> HandleAsync(
         MatchRoom room,
         Session caller,
-        Func<(bool Ended, Response Response)> action)
+        Func<(MatchResult? Result, Response Response)> action)
     {
         if (room.Finalized)
         {
             return new CoordinationEffects();
         }
 
-        var (ended, response) = action();
+        var (result, response) = action();
         var effects = new CoordinationEffects();
 
         if (response is not null)
@@ -74,8 +74,9 @@ public sealed class MatchManager(MatchRegistry registry)
             effects.SendResponse(room.Id, response);
         }
 
-        if (ended)
+        if (result is not null)
         {
+            effects.RecordMatch(room.Game, result);
             await FinalizeAsync(room, caller, effects).ConfigureAwait(false);
         }
 

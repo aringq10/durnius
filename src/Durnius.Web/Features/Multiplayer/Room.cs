@@ -37,15 +37,17 @@ public sealed class LobbyRoom(string name, int capacity) : Room
 public sealed class MatchRoom : Room
 {
     public Guid Id { get; } = Guid.NewGuid();
+    public string Game { get; }
     public IMatch Match { get; }
     public IReadOnlyList<Session> Players { get; }
 
     // Guarded by Gate.
     internal bool Finalized { get; set; }
 
-    internal MatchRoom(IMatch match, IEnumerable<Session> players)
+    internal MatchRoom(IMatch match, IEnumerable<Session> players, string game)
     {
         Match = match;
         Players = players.ToList();
+        Game = game;
     }
 }

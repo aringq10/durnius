@@ -14,6 +14,7 @@ public static class MultiplayerServiceExtensions
         services.AddSingleton<MatchManager>();
         services.AddSingleton<MultiplayerCoordinator>();
         services.AddSingleton(registry);
+        services.AddScoped<MatchHistoryRecorder>();
         services.AddSignalR();
 
         return services;
