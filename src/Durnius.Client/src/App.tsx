@@ -5,6 +5,8 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Lobby from "./pages/Lobby";
 import Leaderboard from "./pages/Leaderboard";
+import Karas from "./pages/Karas";
+import Durnius from "./pages/Durnius";
 
 function Home() {
   const { isAuthenticated } = useAuth();
@@ -33,7 +35,23 @@ export default function App() {
           </RequireAuth>
         }
       />
-       <Route path="/leaderboard" element={<Leaderboard />} />
+      <Route path="/leaderboard" element={<Leaderboard />} />
+      <Route
+        path="/karas"
+        element={
+          <RequireAuth>
+            <Karas />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/durnius"
+        element={
+          <RequireAuth>
+            <Durnius />
+          </RequireAuth>
+        }
+      />
       <Route path="*" element={<Home />} />
     </Routes>
   );

@@ -1,5 +1,5 @@
-import type { CardDto } from "../lib/hub";
-import { CARD_LABELS, SUIT_SYMBOLS } from "../lib/hub";
+import type { CardDto } from "../lib/protocol";
+import { CARD_LABELS, SUIT_SYMBOLS } from "../lib/protocol";
 
 interface PlayingCardProps {
   card?: CardDto;

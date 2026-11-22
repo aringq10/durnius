@@ -145,7 +145,7 @@ button {
 }
 
 /* …then the pile flies into the round winner's deck and is absorbed by it.
-   The travel distance comes from the --collect-* variables Lobby.tsx measures
+   The travel distance comes from the --collect-* variables Karas.tsx measures
    between the pile and the deck's card. It stays full size while it flies and
    only shrinks and fades in the last quarter, so it reads as landing on the
    deck rather than vanishing mid-air. */
@@ -241,4 +241,155 @@ button {
 
 .leaderboard-table tbody tr:first-child td {
   font-weight: 600;
+}
+
+/* Shared game pages */
+
+.game-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.game-header h1 {
+  margin: 0 auto 0 0;
+}
+
+.lobby-buttons {
+  display: flex;
+  gap: 0.75rem;
+}
+
+/* Durnius */
+
+.durnius-info,
+.durnius-players,
+.durnius-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  margin: 1rem 0;
+}
+
+.durnius-trump {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.durnius-player {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #ced4da;
+  border-radius: 8px;
+}
+
+.durnius-player-you {
+  border-color: #4c6ef5;
+  background: #edf2ff;
+}
+
+.badge {
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: #e9ecef;
+  color: #495057;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+.round-banner {
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #ffd8a8;
+  border-radius: 6px;
+  background: #fff4e6;
+  color: #7f4f24;
+  line-height: 1.5;
+}
+
+.round-banner.game-over {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  border-color: #b2f2bb;
+  background: #ebfbee;
+  color: #256029;
+}
+
+.round-banner ol {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.durnius-table {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  min-height: 90px;
+  margin: 0.5rem 0 1rem;
+}
+
+.durnius-pair {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+}
+
+.durnius-pair-owner {
+  color: #6c757d;
+  font-size: 0.8rem;
+}
+
+.durnius-arrow {
+  color: #6c757d;
+}
+
+.durnius-undefended {
+  color: #c92a2a;
+  font-size: 0.8rem;
+}
+
+.card-button {
+  display: inline-flex;
+  padding: 0;
+  border: 0;
+  background: none;
+  border-radius: 8px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card-button:not(:disabled):hover {
+  transform: translateY(-4px);
+}
+
+.card-button.selected {
+  box-shadow: 0 0 0 3px #4c6ef5;
+}
+
+.card-button:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+
+.durnius-hand {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  min-height: 80px;
+  margin: 0.5rem 0 1rem;
+}
+
+.durnius-hint {
+  color: #6c757d;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  max-width: 48rem;
 }
