@@ -11,13 +11,16 @@ public interface IAccountService
         string? username, string? password);
     Task<ServiceResult<User, AccountError>> RegisterAsync(
         string? username, string? password);
+    Task<ServiceResult<bool, AccountError>> ChangePasswordAsync(
+        int userId, string? currentPassword, string? newPassword);
 }
 
 public enum AccountError
 {
     ValidationFailed,
     InvalidCredentials,
-    UsernameTaken
+    UsernameTaken,
+    UserNotFound
 }
 
 public class AccountService(AppDbContext db) : IAccountService
@@ -73,6 +76,61 @@ public class AccountService(AppDbContext db) : IAccountService
         }
 
         return ServiceResult<User, AccountError>.Success(user);
+    }
+    
+    public async Task<ServiceResult<bool, AccountError>> ChangePasswordAsync(
+        int userId, string? currentPassword, string? newPassword)
+    {
+        var errors = new List<string>();
+
+        if (string.IsNullOrEmpty(currentPassword))
+        {
+            errors.Add("Current password is required.");
+        }
+        else if (currentPassword.Length > PasswordMaxLength)
+        {
+           errors.Add($"Current password must be at most {PasswordMaxLength} characters.");
+        }
+
+        if (string.IsNullOrEmpty(newPassword))
+        {
+            errors.Add("New password is required.");
+        }
+        else if (newPassword.Length > PasswordMaxLength)
+        {
+            errors.Add($"Password must be at most {PasswordMaxLength} characters.");
+        }
+
+        if (errors.Count > 0)
+        {
+            return ServiceResult<bool, AccountError>.Failure(
+                AccountError.ValidationFailed, errors);
+        }
+
+        var user = await _db.Users.SingleOrDefaultAsync(user => user.Id == userId);
+        if (user is null)
+        {
+            return ServiceResult<bool, AccountError>.Failure(
+                AccountError.UserNotFound,
+                ["The account could not be found."]);
+        }
+
+        if (!BCrypt.Net.BCrypt.Verify(currentPassword!, user.PasswordHash))
+        {
+            throw new InvalidCurrentPasswordException();
+        }
+
+        if (BCrypt.Net.BCrypt.Verify(newPassword!, user.PasswordHash))
+       {
+            return ServiceResult<bool, AccountError>.Failure(
+                AccountError.ValidationFailed,
+                ["The new password must be different from the current password."]);
+        }
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword!);
+        await _db.SaveChangesAsync();
+
+        return ServiceResult<bool, AccountError>.Success(true);
     }
 
     public async Task<ServiceResult<User, AccountError>> RegisterAsync(

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Durnius.Web.Common;
 using Durnius.Web.Data;
+using System.Security.Claims;
 
 namespace Durnius.Web.Features.Account;
 
@@ -28,6 +29,40 @@ public class AccountController(
 
         return ToActionResult(result);
     }
+    [HttpPut("/api/account/password")]
+    [Authorize]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!int.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            var result = await _accountService.ChangePasswordAsync(
+                userId, request.CurrentPassword, request.NewPassword);
+
+            return result.Match<IActionResult>(
+                _ => NoContent(),
+                (error, messages) => error switch
+                {
+                    AccountError.ValidationFailed => BadRequest(new { errors = messages }),
+                    AccountError.UserNotFound => NotFound(new { errors = messages }),
+                    _ => StatusCode(StatusCodes.Status500InternalServerError)
+                });
+        }
+        catch (InvalidCurrentPasswordException exception)
+        {
+            _logger.LogWarning(
+                "User {UserId} supplied an incorrect current password while changing it.",
+                userId);
+
+            return BadRequest(new { errors = new[] { exception.Message } });
+        }
+    }
+
 
     [HttpPost("/api/register")]
     [AllowAnonymous]
@@ -59,5 +94,7 @@ public class AccountController(
 public record LoginRequest(string? Username, string? Password);
 
 public record RegisterRequest(string? Username, string? Password);
+
+public record ChangePasswordRequest(string? CurrentPassword, string? NewPassword);
 
 public record AuthResponse(string Token, string TokenType);
