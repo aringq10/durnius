@@ -26,6 +26,9 @@ export default function Lobby() {
         <button type="button" onClick={() => navigate("/leaderboard")}>
           Leaderboard
         </button>
+        <button type="button" onClick={() => navigate("/account")}>
+          Account settings
+        </button>
         <button type="button" onClick={handleLogout}>
           Log Out
         </button>
