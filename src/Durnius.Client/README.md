@@ -25,4 +25,9 @@ at `VITE_API_URL` (default `http://localhost:8080`); copy `.env.example` to
 
 - `/login` — log in with an existing account
 - `/register` — create a new account
-- `/lobby` — protected; requires a valid stored JWT, otherwise redirects to `/login`. Joins the Karas matchmaking lobby over SignalR.
+- `/lobby` — protected; requires a valid stored JWT, otherwise redirects to `/login`. Offers two buttons that lead to the game pages.
+- `/karas` — protected; joins the Karas lobby and plays the match.
+- `/durnius` — protected; joins the Durnius lobby and plays the match.
+
+All SignalR connection handling, hub messages and DTOs live in
+`src/lib/protocol.ts`; each game page only contains its own client logic and UI.
