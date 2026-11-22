@@ -5,6 +5,11 @@ import type { LeaderboardResponse } from "../lib/api";
 /** Wait this long before retrying a failed request. */
 const RETRY_MS = 30_000;
 
+/** Mirrors LeaderboardService.GoldForRank: 1st = 100, 2nd = 90, … 10th = 10. */
+function goldForRank(rank: number): number {
+  return (11 - rank) * 10;
+}
+
 /** Daily leaderboard panel shown on the lobby page. */
 export default function LeaderboardPanel() {
   const [board, setBoard] = useState<LeaderboardResponse | null>(null);
@@ -93,7 +98,10 @@ export default function LeaderboardPanel() {
             <tr>
               <th>#</th>
               <th>Player</th>
-              <th>Wins</th>
+              <th className="board-num">Wins</th>
+              <th className="board-num" title="Paid at the daily reset">
+                Gold
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -101,11 +109,20 @@ export default function LeaderboardPanel() {
               <tr key={entry.userId}>
                 <td>{entry.rank}</td>
                 <td>{entry.username}</td>
-                <td>{entry.wins}</td>
+                <td className="board-num">{entry.wins}</td>
+                <td className="board-num board-gold">
+                  +{goldForRank(entry.rank)}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
+      )}
+
+      {board && board.entries.length > 0 && (
+        <p className="muted board-note">
+          Gold prizes are paid out at the daily reset.
+        </p>
       )}
     </section>
   );

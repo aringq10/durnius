@@ -351,6 +351,55 @@ a {
   font-size: 1.5rem;
 }
 
+/* Gold balance chip (top bar, and larger on the account profile). */
+.gold-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(217, 169, 78, 0.4);
+  background: rgba(217, 169, 78, 0.08);
+  color: var(--gold-strong);
+  font-weight: 600;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.gold-coin {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 35% 30%,
+    var(--gold-strong),
+    var(--gold) 60%,
+    #a97e2f
+  );
+  box-shadow: inset 0 0 0 1.5px rgba(32, 23, 3, 0.35);
+  flex: none;
+}
+
+.gold-chip-lg {
+  gap: 0.55rem;
+  padding: 0.5rem 1rem;
+  font-size: 1.05rem;
+}
+
+.gold-chip-lg .gold-coin {
+  width: 20px;
+  height: 20px;
+}
+
+.gold-label {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
 .page {
   max-width: 1080px;
   margin: 0 auto;
@@ -553,6 +602,21 @@ a {
 
 .board-table tbody tr:first-child td:first-child {
   color: var(--gold);
+}
+
+.board-table .board-num {
+  text-align: right;
+}
+
+.board-gold {
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.board-note {
+  margin: 0.75rem 0 0;
+  font-size: 0.82rem;
 }
 
 /* --- Account ----------------------------------------------------------- */
@@ -1216,12 +1280,42 @@ a {
 
 @media (max-width: 560px) {
   .topbar-inner {
-    gap: 0.75rem;
-    padding: 0.6rem 0.9rem;
+    gap: 0.5rem;
+    padding: 0.6rem 0.5rem;
   }
 
-  .user-name {
+  .brand {
+    font-size: 1.05rem;
+  }
+
+  .topnav {
+    gap: 0.125rem;
+  }
+
+  .topnav a {
+    padding: 0.4rem 0.4rem;
+    font-size: 0.85rem;
+  }
+
+  /* The username is already hidden here; drop the avatar too so the
+     gold balance and log out button fit alongside the navigation. */
+  .user-chip {
     display: none;
+  }
+
+  .topbar-user {
+    gap: 0.5rem;
+  }
+
+  .topbar .gold-chip {
+    gap: 0.35rem;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.85rem;
+  }
+
+  .topbar .gold-coin {
+    width: 14px;
+    height: 14px;
   }
 
   .page {
@@ -1261,6 +1355,14 @@ a {
 
   .durnius-turn {
     margin-left: 0;
+  }
+}
+
+/* On very narrow phones the brand collapses to its suit icon so the gold
+   balance, navigation and log out button all stay on one row. */
+@media (max-width: 400px) {
+  .brand-name {
+    display: none;
   }
 }
 

@@ -13,6 +13,8 @@ public interface IAccountService
         string? username, string? password);
     Task<ServiceResult<bool, AccountError>> ChangePasswordAsync(
         int userId, string? currentPassword, string? newPassword);
+    Task<AccountDto?> GetCurrentAsync(
+        string username, CancellationToken cancellationToken = default);
 }
 
 public enum AccountError
@@ -22,6 +24,8 @@ public enum AccountError
     UsernameTaken,
     UserNotFound
 }
+
+public sealed record AccountDto(int UserId, string Username, int Gold);
 
 public class AccountService(AppDbContext db) : IAccountService
 {
@@ -160,5 +164,16 @@ public class AccountService(AppDbContext db) : IAccountService
         await _db.SaveChangesAsync();
 
         return ServiceResult<User, AccountError>.Success(user);
+    }
+
+    public async Task<AccountDto?> GetCurrentAsync(
+        string username,
+        CancellationToken cancellationToken = default)
+    {
+        return await _db.Users
+            .AsNoTracking()
+            .Where(user => user.Username == username)
+            .Select(user => new AccountDto(user.Id, user.Username, user.Gold))
+            .SingleOrDefaultAsync(cancellationToken);
     }
 }

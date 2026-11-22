@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
 import FormErrors from "../components/FormErrors";
+import GoldDisplay from "../components/GoldDisplay";
 import { changePassword, errorMessages } from "../lib/api";
 import { PASSWORD_MAX_LENGTH } from "../lib/validation";
 
@@ -69,6 +70,7 @@ export default function Account() {
             <strong>{username ?? "Player"}</strong>
             <span className="muted">Signed in</span>
           </div>
+          <GoldDisplay large />
           <button type="button" className="btn" onClick={logout}>
             Log out
           </button>
