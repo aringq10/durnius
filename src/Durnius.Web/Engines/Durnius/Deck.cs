@@ -17,6 +17,8 @@ public class Deck : IEnumerable<Card>
         }
     }
 
+    internal Deck(IEnumerable<Card> cards) => _cards.AddRange(cards);
+
     public void Shuffle(int? seed = null) =>
         Shuffle(seed.HasValue ? new Random(seed.Value) : Random.Shared);
 
