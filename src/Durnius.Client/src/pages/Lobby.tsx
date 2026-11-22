@@ -384,7 +384,15 @@ export default function Lobby() {
           )}
         </p>
 
-        <p>
+        <p className="links">
+          <button
+            type="button"
+            onClick={() => navigate("/leaderboard")}
+            disabled
+            title="Finish your match first"
+          >
+            Leaderboard
+          </button>
           <button type="button" onClick={handleLogout}>
             Log Out
           </button>
@@ -426,7 +434,10 @@ export default function Lobby() {
         </button>
       )}
 
-      <p>
+      <p className="links">
+        <button type="button" onClick={() => navigate("/leaderboard")}>
+          Leaderboard
+        </button>
         <button type="button" onClick={handleLogout}>
           Log Out
         </button>

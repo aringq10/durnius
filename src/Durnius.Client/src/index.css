@@ -205,3 +205,40 @@ button {
     opacity: 1;
   }
 }
+
+.leaderboard {
+  max-width: 520px;
+}
+
+.leaderboard-note {
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.leaderboard-table th,
+.leaderboard-table td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #dee2e6;
+  text-align: left;
+}
+
+.leaderboard-table th:first-child,
+.leaderboard-table td:first-child {
+  width: 3rem;
+  text-align: right;
+  color: #6c757d;
+}
+
+.leaderboard-table th:last-child,
+.leaderboard-table td:last-child {
+  text-align: right;
+}
+
+.leaderboard-table tbody tr:first-child td {
+  font-weight: 600;
+}
