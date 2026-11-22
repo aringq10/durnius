@@ -44,7 +44,7 @@ public sealed class DailyLeaderboardSettlementService(
         }
     }
 
-    private async Task SettleAsync(
+    public async Task<int> SettleAsync(
         DateTime periodStartUtc,
         CancellationToken cancellationToken)
     {
@@ -59,7 +59,7 @@ public sealed class DailyLeaderboardSettlementService(
         {
             logger.LogInformation(
                 "No leaderboard entries for {PeriodStartUtc:d}; nothing to pay.", periodStartUtc);
-            return;
+            return 0;
         }
 
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
@@ -81,5 +81,7 @@ public sealed class DailyLeaderboardSettlementService(
         logger.LogInformation(
             "Paid {Count} leaderboard entries for {PeriodStartUtc:d}",
             entries.Count, periodStartUtc);
+
+        return entries.Count;
     }
 }
