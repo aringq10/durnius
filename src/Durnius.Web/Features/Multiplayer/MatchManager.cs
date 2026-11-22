@@ -52,10 +52,6 @@ public sealed class MatchManager(MatchRegistry registry)
         session.RunInRoomAsync<MatchRoom, CoordinationEffects>(
             room => HandleAsync(room, session, () => room.Match.MakeMove(session.ConnectionId, move)));
 
-    public Task<CoordinationEffects?> ForwardDisconnectAsync(Session session) =>
-        session.RunInRoomAsync<MatchRoom, CoordinationEffects>(
-            room => HandleAsync(room, session, () => room.Match.Disconnect(session.ConnectionId)));
-
     // Caller already holds room.Gate and session.Gate (disconnect dispatch).
     internal Task<CoordinationEffects> DisconnectInRoomAsync(Session session, MatchRoom room) =>
         HandleAsync(room, session, () => room.Match.Disconnect(session.ConnectionId));
@@ -100,11 +96,6 @@ public sealed class MatchManager(MatchRegistry registry)
 
                 await player.Gate.WaitAsync().ConfigureAwait(false);
                 held.Add(player);
-            }
-
-            if (room.Finalized)
-            {
-                return;
             }
 
             room.Finalized = true;

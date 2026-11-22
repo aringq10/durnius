@@ -49,24 +49,6 @@ public sealed class LobbyManager
 
     public async Task<JoinResult> JoinAsync(Session session, string lobbyName)
     {
-        // Preserve the existing rejection priority: match membership first.
-        await session.Gate.WaitAsync().ConfigureAwait(false);
-        try
-        {
-            if (session.Room is MatchRoom)
-            {
-                return JoinResult.Rejected("Already in a match");
-            }
-            if (session.Room is not null)
-            {
-                return JoinResult.Rejected("Already in another lobby");
-            }
-        }
-        finally
-        {
-            session.Gate.Release();
-        }
-
         if (!_lobbies.TryGetValue(lobbyName, out var lobby))
         {
             return JoinResult.Rejected("Unknown lobby");
@@ -78,8 +60,6 @@ public sealed class LobbyManager
             await session.Gate.WaitAsync().ConfigureAwait(false);
             try
             {
-                // Recheck under both gates: another room may have claimed the
-                // session while we waited for the lobby gate.
                 if (session.Room is MatchRoom)
                 {
                     return JoinResult.Rejected("Already in a match");
@@ -171,44 +151,21 @@ public sealed class LobbyManager
                 held.Add(player);
             }
 
-            var transitionEffects = new CoordinationEffects();
-            try
+            // Publish room ownership while nobody can discover the match
+            // through a partially initialized registration.
+            foreach (var player in players)
             {
-                // Publish room ownership while nobody can discover the match
-                // through a partially initialized registration.
-                foreach (var player in players)
-                {
-                    player.Room = room;
-                }
-                lobby.Clear();
-                _matches.Publish(room);
+                player.Room = room;
+            }
+            lobby.Clear();
+            _matches.Publish(room);
 
-                foreach (var player in players)
-                {
-                    transitionEffects.RemoveFromGroup(player.ConnectionId, lobby.Name);
-                    transitionEffects.AddToGroup(player.ConnectionId, room.Id.ToString());
-                }
-                transitionEffects.SendResponse(room.Id, initialResponse);
-            }
-            catch
+            foreach (var player in players)
             {
-                foreach (var player in players)
-                {
-                    player.Room = lobby;
-                }
-                lobby.Clear();
-                foreach (var player in players)
-                {
-                    lobby.Add(player);
-                }
-                _matches.Unpublish(room);
-                throw;
+                effects.RemoveFromGroup(player.ConnectionId, lobby.Name);
+                effects.AddToGroup(player.ConnectionId, room.Id.ToString());
             }
-
-            foreach (var effect in transitionEffects.Items)
-            {
-                effects.Add(effect);
-            }
+            effects.SendResponse(room.Id, initialResponse);
         }
         finally
         {
