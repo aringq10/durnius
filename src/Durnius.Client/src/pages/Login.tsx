@@ -1,94 +1,46 @@
-import { useState } from "react";
-import type { FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { errorMessages, postJson } from "../lib/api";
-import type { AuthResponse } from "../lib/api";
-import { validateCredentials } from "../lib/validation";
+import { useEffect } from "react";
+import { Link, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import FormErrors from "../components/FormErrors";
+import { clearSessionExpired, isSessionExpired } from "../lib/auth";
+import CredentialsForm from "../components/CredentialsForm";
 
 export default function Login() {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [errors, setErrors] = useState<string[]>([]);
-  const [submitting, setSubmitting] = useState(false);
-  const { storeToken } = useAuth();
-  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+  const location = useLocation();
+  const expired =
+    (location.state as { expired?: boolean } | null)?.expired === true ||
+    isSessionExpired();
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  // The notice has been picked up; a later manual logout must not show it.
+  useEffect(() => {
+    clearSessionExpired();
+  }, []);
 
-    const validationErrors = validateCredentials(username, password);
-    if (validationErrors.length > 0) {
-      setErrors(validationErrors);
-      return;
-    }
-
-    setErrors([]);
-    setSubmitting(true);
-    try {
-      const auth = await postJson<AuthResponse>("/api/login", {
-        username,
-        password,
-      });
-      storeToken(auth.token);
-      navigate("/lobby", { replace: true });
-    } catch (err) {
-      setErrors(errorMessages(err));
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  function handleUsernameChange(value: string) {
-    setUsername(value);
-    setErrors([]);
-  }
-
-  function handlePasswordChange(value: string) {
-    setPassword(value);
-    setErrors([]);
+  if (isAuthenticated) {
+    return <Navigate to="/lobby" replace />;
   }
 
   return (
-    <div className="card">
-      <h2>Log In</h2>
-
-      <form onSubmit={handleSubmit}>
-        <div className="field">
-          <label htmlFor="username">Username</label>
-          <br />
-          <input
-            id="username"
-            type="text"
-            value={username}
-            onChange={(e) => handleUsernameChange(e.target.value)}
-            autoComplete="username"
-          />
-        </div>
-
-        <div className="field">
-          <label htmlFor="password">Password</label>
-          <br />
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => handlePasswordChange(e.target.value)}
-            autoComplete="current-password"
-          />
-        </div>
-
-        <FormErrors errors={errors} />
-
-        <button type="submit" disabled={submitting}>
-          {submitting ? "Logging in..." : "Log In"}
-        </button>
-      </form>
-
-      <p className="links">
-        No account yet? <Link to="/register">Register</Link>
-      </p>
+    <div className="auth-wrap">
+      <div className="auth-brand">
+        <span className="brand-suit" aria-hidden="true">
+          ♠
+        </span>
+        Durnius
+      </div>
+      <div className="panel auth-panel">
+        <h1>Welcome back</h1>
+        <p className="muted">Log in to take a seat at the table.</p>
+        {expired && (
+          <div className="alert alert-info" role="status">
+            Your session has expired. Please log in again.
+          </div>
+        )}
+        <CredentialsForm mode="login" />
+        <p className="auth-alt">
+          No account yet? <Link to="/register">Register</Link>
+        </p>
+      </div>
     </div>
   );
 }

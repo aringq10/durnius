@@ -1,37 +1,76 @@
-import { createContext, useContext, useMemo, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useSyncExternalStore,
+} from "react";
 import type { ReactNode } from "react";
-
-const TOKEN_KEY = "durnius.token";
+import { useNavigate } from "react-router-dom";
+import {
+  getToken,
+  notifyUnauthorized,
+  readSession,
+  setToken,
+  setUnauthorizedHandler,
+  subscribeToken,
+} from "../lib/auth";
 
 export interface AuthContextValue {
   token: string | null;
+  username: string | null;
   isAuthenticated: boolean;
-  storeToken: (nextToken: string | null) => void;
+  login: (token: string) => void;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+/** setTimeout delays must fit in a signed 32-bit integer. */
+const MAX_TIMER_MS = 2 ** 31 - 1;
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setTokenState] = useState<string | null>(() =>
-    localStorage.getItem(TOKEN_KEY)
-  );
+  const token = useSyncExternalStore(subscribeToken, getToken);
+  const navigate = useNavigate();
+
+  // Any API call or hub handshake that reports "not logged in" ends up here:
+  // the token has already been cleared, we only need to move to /login.
+  useEffect(() => {
+    setUnauthorizedHandler(() =>
+      navigate("/login", { replace: true, state: { expired: true } })
+    );
+    return () => setUnauthorizedHandler(null);
+  }, [navigate]);
+
+  // Log out exactly when the JWT expires, even in the middle of a match.
+  useEffect(() => {
+    if (!token) return;
+    const { expiresAt } = readSession(token);
+    if (expiresAt === null) return;
+
+    let timer: number | undefined;
+    const arm = () => {
+      const remaining = expiresAt - Date.now();
+      if (remaining <= 0) {
+        notifyUnauthorized();
+      } else {
+        timer = window.setTimeout(arm, Math.min(remaining, MAX_TIMER_MS));
+      }
+    };
+    arm();
+    return () => window.clearTimeout(timer);
+  }, [token]);
 
   const value = useMemo<AuthContextValue>(() => {
-    const storeToken = (nextToken: string | null) => {
-      if (nextToken) {
-        localStorage.setItem(TOKEN_KEY, nextToken);
-      } else {
-        localStorage.removeItem(TOKEN_KEY);
-      }
-      setTokenState(nextToken);
-    };
-
+    const { username } = readSession(token);
     return {
       token,
-      isAuthenticated: Boolean(token),
-      storeToken,
-      logout: () => storeToken(null),
+      username,
+      isAuthenticated: token !== null,
+      login: (next) => setToken(next),
+      // JWT auth is stateless: logging out only means discarding the token.
+      // Protected routes redirect to /login on their own.
+      logout: () => setToken(null),
     };
   }, [token]);
 

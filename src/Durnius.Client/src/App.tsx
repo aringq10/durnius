@@ -1,10 +1,11 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import type { ReactNode } from "react";
 import { useAuth } from "./auth/AuthContext";
+import { isSessionExpired } from "./lib/auth";
+import Layout from "./components/Layout";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Lobby from "./pages/Lobby";
-import Leaderboard from "./pages/Leaderboard";
 import Karas from "./pages/Karas";
 import Durnius from "./pages/Durnius";
 import Account from "./pages/Account";
@@ -17,7 +18,13 @@ function Home() {
 function RequireAuth({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{ expired: isSessionExpired() }}
+      />
+    );
   }
   return children;
 }
@@ -29,38 +36,19 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route
-        path="/lobby"
         element={
           <RequireAuth>
-            <Lobby />
+            <Layout />
           </RequireAuth>
         }
-      />
-      <Route
-        path="/account"
-        element={
-          <RequireAuth>
-            <Account />
-          </RequireAuth>
-        }
-      />
-      <Route path="/leaderboard" element={<Leaderboard />} />
-      <Route
-        path="/karas"
-        element={
-          <RequireAuth>
-            <Karas />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/durnius"
-        element={
-          <RequireAuth>
-            <Durnius />
-          </RequireAuth>
-        }
-      />
+      >
+        <Route path="/lobby" element={<Lobby />} />
+        <Route path="/karas" element={<Karas />} />
+        <Route path="/durnius" element={<Durnius />} />
+        <Route path="/account" element={<Account />} />
+      </Route>
+      {/* The leaderboard now lives on the lobby page. */}
+      <Route path="/leaderboard" element={<Navigate to="/lobby" replace />} />
       <Route path="*" element={<Home />} />
     </Routes>
   );
