@@ -73,6 +73,20 @@ public class AccountController(
         return ToActionResult(result);
     }
 
+    [HttpGet("/api/account/me")]
+    [Authorize]
+    public async Task<IActionResult> Me(CancellationToken cancellationToken)
+    {
+        var username = User.Identity?.Name;
+        if (string.IsNullOrEmpty(username))
+        {
+            return Unauthorized();
+        }
+
+        var account = await _accountService.GetCurrentAsync(username, cancellationToken);
+        return account is null ? NotFound() : Ok(account);
+    }
+
     private IActionResult ToActionResult(ServiceResult<User, AccountError> result)
     {
         return result.Match<IActionResult>(

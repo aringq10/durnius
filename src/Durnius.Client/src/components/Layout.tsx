@@ -1,5 +1,6 @@
 import { Link, NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import GoldDisplay from "./GoldDisplay";
 
 /** App shell for authenticated pages: top bar, navigation and user menu. */
 export default function Layout() {
@@ -9,17 +10,18 @@ export default function Layout() {
     <div className="shell">
       <header className="topbar">
         <div className="topbar-inner">
-          <Link to="/lobby" className="brand">
+          <Link to="/lobby" className="brand" aria-label="Durnius — lobby">
             <span className="brand-suit" aria-hidden="true">
               ♠
             </span>
-            Durnius
+            <span className="brand-name">Durnius</span>
           </Link>
           <nav className="topnav" aria-label="Main">
             <NavLink to="/lobby">Lobby</NavLink>
             <NavLink to="/account">Account</NavLink>
           </nav>
           <div className="topbar-user">
+            <GoldDisplay />
             {username && (
               <span className="user-chip">
                 <span className="avatar" aria-hidden="true">

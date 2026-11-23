@@ -137,3 +137,13 @@ export function changePassword(
 export function getLeaderboard(): Promise<LeaderboardResponse> {
   return request<LeaderboardResponse>("/api/leaderboard", "GET");
 }
+
+export interface CurrentAccount {
+  userId: number;
+  username: string;
+  gold: number;
+}
+
+export function getCurrentAccount(): Promise<CurrentAccount> {
+  return request<CurrentAccount>("/api/account/me", "GET");
+}
