@@ -147,3 +147,14 @@ export interface CurrentAccount {
 export function getCurrentAccount(): Promise<CurrentAccount> {
   return request<CurrentAccount>("/api/account/me", "GET");
 }
+
+/** One finished game in the account's match history. */
+export interface MatchHistoryEntry {
+  placement: number | null;
+  gameType: string;
+  matchDateUtc: string;
+}
+
+export function getMatchHistory(): Promise<MatchHistoryEntry[]> {
+  return request<MatchHistoryEntry[]>("/api/account/matches", "GET");
+}

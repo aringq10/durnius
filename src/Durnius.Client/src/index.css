@@ -647,6 +647,48 @@ a {
   overflow-wrap: anywhere;
 }
 
+.account-main {
+  display: grid;
+  gap: 1rem;
+}
+
+.match-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.match-table th,
+.match-table td {
+  padding: 0.55rem 0.75rem;
+  text-align: left;
+}
+
+.match-table th {
+  color: var(--faint);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid var(--line);
+}
+
+.match-table td {
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.match-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.match-table .match-date {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.match-win {
+  color: var(--gold);
+  font-weight: 600;
+}
+
 /* --- Playing cards ----------------------------------------------------- */
 
 .pcard {

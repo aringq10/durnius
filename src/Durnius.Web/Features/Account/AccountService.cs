@@ -15,6 +15,8 @@ public interface IAccountService
         int userId, string? currentPassword, string? newPassword);
     Task<AccountDto?> GetCurrentAsync(
         string username, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<MatchHistoryEntryDto>> GetMatchHistoryAsync(
+        int userId, CancellationToken cancellationToken = default);
 }
 
 public enum AccountError
@@ -27,11 +29,15 @@ public enum AccountError
 
 public sealed record AccountDto(int UserId, string Username, int Gold);
 
+public sealed record MatchHistoryEntryDto(
+    int? Placement, string GameType, DateTime MatchDateUtc);
+
 public class AccountService(AppDbContext db) : IAccountService
 {
     // Mirrors the constraints configured on the User entity / Users table.
     public const int UsernameMaxLength = 32;
     public const int PasswordMaxLength = 72; // BCrypt only uses the first 72 bytes.
+    public const int MatchHistoryCount = 10;
 
     private readonly AppDbContext _db = db;
 
@@ -175,5 +181,22 @@ public class AccountService(AppDbContext db) : IAccountService
             .Where(user => user.Username == username)
             .Select(user => new AccountDto(user.Id, user.Username, user.Gold))
             .SingleOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<MatchHistoryEntryDto>> GetMatchHistoryAsync(
+        int userId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _db.MatchParticipants
+            .AsNoTracking()
+            .Where(participant => participant.UserId == userId)
+            .OrderByDescending(participant => participant.MatchHistory.MatchDate)
+            .ThenByDescending(participant => participant.MatchHistoryId)
+            .Take(MatchHistoryCount)
+            .Select(participant => new MatchHistoryEntryDto(
+                participant.Placement,
+                participant.MatchHistory.GameType,
+                participant.MatchHistory.MatchDate))
+            .ToListAsync(cancellationToken);
     }
 }

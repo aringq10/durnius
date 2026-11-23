@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
 import FormErrors from "../components/FormErrors";
 import GoldDisplay from "../components/GoldDisplay";
+import MatchHistoryPanel from "../components/MatchHistoryPanel";
 import { changePassword, errorMessages } from "../lib/api";
 import { PASSWORD_MAX_LENGTH } from "../lib/validation";
 
@@ -76,64 +77,68 @@ export default function Account() {
           </button>
         </section>
 
-        <section className="panel">
-          <h2>Change password</h2>
-          <form onSubmit={handleSubmit} className="auth-form">
-            <div className="field">
-              <label htmlFor="current-password">Current password</label>
-              <input
-                id="current-password"
-                className="input"
-                type="password"
-                value={currentPassword}
-                onChange={(event) => setCurrentPassword(event.target.value)}
-                autoComplete="current-password"
-                maxLength={PASSWORD_MAX_LENGTH}
-              />
-            </div>
-
-            <div className="field">
-              <label htmlFor="new-password">New password</label>
-              <input
-                id="new-password"
-                className="input"
-                type="password"
-                value={newPassword}
-                onChange={(event) => setNewPassword(event.target.value)}
-                autoComplete="new-password"
-                maxLength={PASSWORD_MAX_LENGTH}
-              />
-            </div>
-
-            <div className="field">
-              <label htmlFor="confirm-password">Confirm new password</label>
-              <input
-                id="confirm-password"
-                className="input"
-                type="password"
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
-                autoComplete="new-password"
-                maxLength={PASSWORD_MAX_LENGTH}
-              />
-            </div>
-
-            <FormErrors errors={errors} />
-            {successMessage && (
-              <div className="alert alert-success" role="status">
-                {successMessage}
+        <div className="account-main">
+          <section className="panel">
+            <h2>Change password</h2>
+            <form onSubmit={handleSubmit} className="auth-form">
+              <div className="field">
+                <label htmlFor="current-password">Current password</label>
+                <input
+                  id="current-password"
+                  className="input"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(event) => setCurrentPassword(event.target.value)}
+                  autoComplete="current-password"
+                  maxLength={PASSWORD_MAX_LENGTH}
+                />
               </div>
-            )}
 
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={submitting}
-            >
-              {submitting ? "Changing password…" : "Change password"}
-            </button>
-          </form>
-        </section>
+              <div className="field">
+                <label htmlFor="new-password">New password</label>
+                <input
+                  id="new-password"
+                  className="input"
+                  type="password"
+                  value={newPassword}
+                  onChange={(event) => setNewPassword(event.target.value)}
+                  autoComplete="new-password"
+                  maxLength={PASSWORD_MAX_LENGTH}
+                />
+              </div>
+
+              <div className="field">
+                <label htmlFor="confirm-password">Confirm new password</label>
+                <input
+                  id="confirm-password"
+                  className="input"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  autoComplete="new-password"
+                  maxLength={PASSWORD_MAX_LENGTH}
+                />
+              </div>
+
+              <FormErrors errors={errors} />
+              {successMessage && (
+                <div className="alert alert-success" role="status">
+                  {successMessage}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={submitting}
+              >
+                {submitting ? "Changing password…" : "Change password"}
+              </button>
+            </form>
+          </section>
+
+          <MatchHistoryPanel />
+        </div>
       </div>
     </>
   );
