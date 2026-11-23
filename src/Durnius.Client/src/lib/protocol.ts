@@ -1,11 +1,14 @@
 import {
   HubConnectionBuilder,
   HubConnectionState,
+  HttpError,
   LogLevel,
 } from "@microsoft/signalr";
 import type { HubConnection } from "@microsoft/signalr";
 import { useEffect, useRef, useState } from "react";
 import { API_URL, errorMessage } from "./api";
+import { getToken, notifyUnauthorized } from "./auth";
+import type { CardDto, Suit } from "./cards";
 import { useAuth } from "../auth/AuthContext";
 
 export { HubConnectionState };
@@ -14,68 +17,6 @@ export { HubConnectionState };
 export const LOBBIES = ["karas", "durnius"] as const;
 export type GameName = (typeof LOBBIES)[number];
 
-/** Card suits and values as serialized by the engines (lowercased enums). */
-export type Suit = "hearts" | "diamonds" | "clubs" | "spades";
-export type CardValue =
-  | "two"
-  | "three"
-  | "four"
-  | "five"
-  | "six"
-  | "seven"
-  | "eight"
-  | "nine"
-  | "ten"
-  | "jack"
-  | "queen"
-  | "king"
-  | "ace";
-
-export const SUITS: readonly Suit[] = ["hearts", "diamonds", "clubs", "spades"];
-export const CARD_VALUES: readonly CardValue[] = [
-  "two",
-  "three",
-  "four",
-  "five",
-  "six",
-  "seven",
-  "eight",
-  "nine",
-  "ten",
-  "jack",
-  "queen",
-  "king",
-  "ace",
-];
-
-export interface CardDto {
-  suit: Suit;
-  value: CardValue;
-}
-
-export const CARD_LABELS: Record<CardValue, string> = {
-  two: "2",
-  three: "3",
-  four: "4",
-  five: "5",
-  six: "6",
-  seven: "7",
-  eight: "8",
-  nine: "9",
-  ten: "10",
-  jack: "J",
-  queen: "Q",
-  king: "K",
-  ace: "A",
-};
-
-export const SUIT_SYMBOLS: Record<Suit, string> = {
-  hearts: "♥",
-  diamonds: "♦",
-  clubs: "♣",
-  spades: "♠",
-};
-
 /** LobbyUpdate payload (see LobbyUpdateDto in Durnius.Web). */
 export interface LobbyStateDto {
   capacity: number;
@@ -83,7 +24,7 @@ export interface LobbyStateDto {
   players: string[];
 }
 
-// --- Karas messages -------------------------------------------------------
+// --- Karas messages ---------------------------------------------------------
 
 /** MatchStarted payload; `you` is 1 or 2, matching player1/player2. */
 export interface KarasMatchStartDto {
@@ -115,7 +56,7 @@ export interface KarasRoundResultDto {
   gameWinner: number;
 }
 
-// --- Durnius messages -----------------------------------------------------
+// --- Durnius messages -------------------------------------------------------
 
 export interface DurniusPlayedCardDto {
   playerIndex: number;
@@ -171,15 +112,28 @@ export type DurniusMove =
   | { type: "pass" }
   | { type: "take" };
 
-// --- Transport ------------------------------------------------------------
+// --- Transport --------------------------------------------------------------
+
+function isUnauthorizedError(error: unknown): boolean {
+  if (error instanceof HttpError) {
+    return error.statusCode === 401 || error.statusCode === 403;
+  }
+  // Failed negotiation wraps the original HttpError in a plain Error and
+  // only keeps its message, e.g. "Failed to complete negotiation with the
+  // server: Error: Unauthorized: Status code '401'".
+  const message = errorMessage(error);
+  return /Status code '(401|403)'|negotiate '(401|403)'/.test(message);
+}
 
 /** Thin typed wrapper around the /hubs/lobby SignalR connection. */
 export class GameClient {
   private readonly connection: HubConnection;
 
-  constructor(token: string) {
+  constructor() {
     this.connection = new HubConnectionBuilder()
-      .withUrl(`${API_URL}/hubs/lobby`, { accessTokenFactory: () => token })
+      .withUrl(`${API_URL}/hubs/lobby`, {
+        accessTokenFactory: () => getToken() ?? "",
+      })
       .withAutomaticReconnect()
       .configureLogging(LogLevel.Warning)
       .build();
@@ -201,7 +155,7 @@ export class GameClient {
     this.connection.onreconnected(handler);
   }
 
-  onClose(handler: () => void): void {
+  onClose(handler: (error?: Error) => void): void {
     this.connection.onclose(handler);
   }
 
@@ -226,7 +180,7 @@ export class GameClient {
   }
 }
 
-// --- Session hook ---------------------------------------------------------
+// --- Session hook -----------------------------------------------------------
 
 export interface GameSessionHandlers<TStart, TRound> {
   onJoinRejected?: (reason: string) => void;
@@ -246,10 +200,11 @@ export interface GameSession<TMove = unknown> {
   connected: boolean;
   error: string | null;
   actionError: string | null;
-  clearActionError: () => void;
   join: () => Promise<void>;
   leave: () => Promise<void>;
   move: (move: TMove) => Promise<void>;
+  /** Tears the connection down and starts over (after a fatal error). */
+  retry: () => void;
 }
 
 /** Rejections that can be resolved by re-joining once the old session is gone. */
@@ -268,7 +223,12 @@ async function joinAfterConnect(
   try {
     await client.join(game);
   } catch (err) {
-    if (!isCancelled()) onError(errorMessage(err));
+    if (isCancelled()) return;
+    if (isUnauthorizedError(err)) {
+      notifyUnauthorized();
+      return;
+    }
+    onError(errorMessage(err));
   }
 }
 
@@ -287,6 +247,7 @@ export function useGameSession<TStart, TRound, TMove = unknown>(
   );
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const clientRef = useRef<GameClient | null>(null);
   const handlersRef = useRef(handlers);
   handlersRef.current = handlers;
@@ -298,7 +259,7 @@ export function useGameSession<TStart, TRound, TMove = unknown>(
     let startTimer: number | undefined;
     let joinTimer: number | undefined;
     let retries = 0;
-    const client = new GameClient(token);
+    const client = new GameClient();
     clientRef.current = client;
     setState(client.state);
     setError(null);
@@ -363,8 +324,14 @@ export function useGameSession<TStart, TRound, TMove = unknown>(
       handlersRef.current.onReconnect?.();
       scheduleJoin(100);
     });
-    client.onClose(() => {
-      if (!cancelled) setState(HubConnectionState.Disconnected);
+    client.onClose((closeError) => {
+      if (cancelled) return;
+      setState(HubConnectionState.Disconnected);
+      if (closeError && isUnauthorizedError(closeError)) {
+        notifyUnauthorized();
+      } else if (closeError) {
+        setError(`Connection lost: ${errorMessage(closeError)}`);
+      }
     });
 
     // Like the join, defer start so a StrictMode remount never opens a
@@ -382,7 +349,12 @@ export function useGameSession<TStart, TRound, TMove = unknown>(
           scheduleJoin();
         })
         .catch((err: unknown) => {
-          if (!cancelled) setError(errorMessage(err));
+          if (cancelled) return;
+          if (isUnauthorizedError(err)) {
+            notifyUnauthorized();
+            return;
+          }
+          setError(errorMessage(err));
         });
     });
 
@@ -393,7 +365,7 @@ export function useGameSession<TStart, TRound, TMove = unknown>(
       if (clientRef.current === client) clientRef.current = null;
       void client.stop();
     };
-  }, [token, game]);
+  }, [token, game, attempt]);
 
   async function invoke(action: (client: GameClient) => Promise<void>) {
     const client = clientRef.current;
@@ -405,6 +377,10 @@ export function useGameSession<TStart, TRound, TMove = unknown>(
     try {
       await action(client);
     } catch (err) {
+      if (isUnauthorizedError(err)) {
+        notifyUnauthorized();
+        return;
+      }
       setActionError(errorMessage(err));
     }
   }
@@ -414,9 +390,9 @@ export function useGameSession<TStart, TRound, TMove = unknown>(
     connected: state === HubConnectionState.Connected,
     error,
     actionError,
-    clearActionError: () => setActionError(null),
     join: () => invoke((client) => client.join(game)),
     leave: () => invoke((client) => client.leave()),
     move: (move: TMove) => invoke((client) => client.move(move)),
+    retry: () => setAttempt((value) => value + 1),
   };
 }

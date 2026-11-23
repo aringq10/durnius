@@ -1,54 +1,27 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  CARD_VALUES,
-  SUITS,
-  useGameSession,
-} from "../lib/protocol";
+import { useGameSession } from "../lib/protocol";
 import type {
-  CardDto,
-  CardValue,
   DurniusMove,
   DurniusRoundResultDto,
   DurniusStandingDto,
   DurniusStateDto,
   LobbyStateDto,
-  Suit,
 } from "../lib/protocol";
-import { useAuth } from "../auth/AuthContext";
-import GameHeader from "../components/GameHeader";
+import {
+  canBeat,
+  cardKey,
+  sameCard,
+  sortHand,
+} from "../lib/cards";
+import type { CardDto } from "../lib/cards";
+import ConnectionDot from "../components/ConnectionDot";
 import PlayingCard from "../components/PlayingCard";
+import WaitingRoom from "../components/WaitingRoom";
 
 const MAX_TABLE_CARDS = 6;
 
-function cardKey(card: CardDto): string {
-  return `${card.suit}-${card.value}`;
-}
-
-function sameCard(left: CardDto | null, right: CardDto | null): boolean {
-  return left !== null && right !== null && cardKey(left) === cardKey(right);
-}
-
-function sortHand(hand: CardDto[]): CardDto[] {
-  return [...hand].sort(
-    (left, right) =>
-      SUITS.indexOf(left.suit) - SUITS.indexOf(right.suit) ||
-      CARD_VALUES.indexOf(left.value) - CARD_VALUES.indexOf(right.value)
-  );
-}
-
-function rank(value: CardValue): number {
-  return CARD_VALUES.indexOf(value);
-}
-
-/** Same rule as GameEngine.CanBeat: higher of the same suit, or trump over a non-trump. */
-function canBeat(attack: CardDto, defense: CardDto, trump: Suit): boolean {
-  if (attack.suit === defense.suit) {
-    return rank(defense.value) > rank(attack.value);
-  }
-  return defense.suit === trump && attack.suit !== trump;
-}
-
+/** Added attacks must match a rank already on the table (attack or defense). */
 function canAddAttack(card: CardDto, table: DurniusStateDto["table"]): boolean {
   return (
     table.length === 0 ||
@@ -61,7 +34,6 @@ function canAddAttack(card: CardDto, table: DurniusStateDto["table"]): boolean {
 }
 
 export default function Durnius() {
-  const { logout } = useAuth();
   const navigate = useNavigate();
 
   const [lobby, setLobby] = useState<LobbyStateDto | null>(null);
@@ -98,22 +70,23 @@ export default function Durnius() {
   }
 
   // Every hub message and invocation lives in the protocol module.
-  const session = useGameSession<DurniusStateDto, DurniusRoundResultDto, DurniusMove>(
-    "durnius",
-    {
-      onJoinRejected: (reason) => setNotice(reason),
-      onLobby: (state) => {
-        setLobby(state);
-        setNotice(null);
-      },
-      onMatchStarted: applyState,
-      onGameState: applyState,
-      onRoundResult: setRound,
-      onMatchEnded: (winnerIndex) => setWinner(winnerIndex),
-      onMatchStandings: setStandings,
-      onReconnect: reset,
-    }
-  );
+  const session = useGameSession<
+    DurniusStateDto,
+    DurniusRoundResultDto,
+    DurniusMove
+  >("durnius", {
+    onJoinRejected: (reason) => setNotice(reason),
+    onLobby: (state) => {
+      setLobby(state);
+      setNotice(null);
+    },
+    onMatchStarted: applyState,
+    onGameState: applyState,
+    onRoundResult: setRound,
+    onMatchEnded: (winnerIndex) => setWinner(winnerIndex),
+    onMatchStandings: setStandings,
+    onReconnect: reset,
+  });
 
   async function send(move: DurniusMove) {
     setBusy(true);
@@ -121,14 +94,14 @@ export default function Durnius() {
     setBusy(false);
   }
 
-  function clearSelection() {
-    setSelectedCard(null);
-    setSelectedAttack(null);
+  function handleLeave() {
+    setLobby(null);
+    void session.leave();
   }
 
-  function handleLogout() {
-    logout();
-    navigate("/login", { replace: true });
+  function handlePlayAgain() {
+    reset();
+    void session.join();
   }
 
   const table = game?.table ?? [];
@@ -138,7 +111,8 @@ export default function Durnius() {
   const selectedAttackEntry = selectedAttack
     ? table.find(
         (played) =>
-          played.defenseCard === null && sameCard(played.attackCard, selectedAttack)
+          played.defenseCard === null &&
+          sameCard(played.attackCard, selectedAttack)
       )
     : undefined;
 
@@ -148,6 +122,7 @@ export default function Durnius() {
     table.length < MAX_TABLE_CARDS &&
     canAddAttack(selectedCard, table);
   const canDefend =
+    game !== null &&
     isDefender &&
     selectedCard !== null &&
     selectedAttackEntry !== undefined &&
@@ -180,155 +155,176 @@ export default function Durnius() {
 
   return (
     <>
-      <GameHeader
-        title="Durnius"
-        state={session.state}
-        onBack={() => navigate("/lobby")}
-        onLogout={handleLogout}
-      />
-      {session.error && <p className="error">{session.error}</p>}
-      {(session.actionError || notice) && (
-        <p className="error">{session.actionError ?? notice}</p>
+      <div className="game-head">
+        <h1>Durnius</h1>
+        <ConnectionDot state={session.state} />
+      </div>
+
+      {session.error && (
+        <div className="alert alert-error" role="alert">
+          {session.error}{" "}
+          <button type="button" className="btn btn-sm" onClick={session.retry}>
+            Retry
+          </button>
+        </div>
       )}
 
       {game === null ? (
-        <div>
-          <h2>Matchmaking</h2>
-          {lobby ? (
-            <>
-              <p>
-                Waiting for players ({lobby.count}/{lobby.capacity}):{" "}
-                {lobby.players.join(", ")}
-              </p>
-              <button
-                type="button"
-                onClick={() => void session.leave()}
-                disabled={!session.connected}
-              >
-                Leave Lobby
-              </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              onClick={() => void session.join()}
-              disabled={!session.connected}
-            >
-              Join Durnius Lobby
-            </button>
-          )}
-        </div>
+        <WaitingRoom
+          game="durnius"
+          blurb="Attack and defend, durak-style. Beat the cards thrown at you with a higher card of the same suit or a trump — or take them all. The last player holding cards loses."
+          connected={session.connected}
+          lobby={lobby}
+          error={notice ?? session.actionError}
+          onJoin={() => void session.join()}
+          onLeave={handleLeave}
+        />
       ) : (
-        <div className="durnius-game">
+        <div className="durnius">
           {winner !== null && (
-            <div className="round-banner game-over">
-              <strong>{game.players[winner] ?? "A player"} wins the match!</strong>
+            <div className="panel gameover">
+              <h2>
+                {winner === game.you ? "You win the match!" : status}
+              </h2>
               {standings.length > 0 && (
-                <ol>
+                <ol className="standings">
                   {standings.map((standing) => (
                     <li key={standing.playerIndex}>
-                      {standing.username} — #{standing.placement}
+                      <span className="standings-place">
+                        #{standing.placement}
+                      </span>
+                      {standing.username}
+                      {standing.playerIndex === game.you ? " (you)" : ""}
                     </li>
                   ))}
                 </ol>
               )}
-              <button type="button" onClick={() => navigate("/lobby")}>
-                Back to Lobby
-              </button>
+              <div className="gameover-actions">
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handlePlayAgain}
+                  disabled={!session.connected}
+                >
+                  Play again
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => navigate("/lobby")}
+                >
+                  Back to lobby
+                </button>
+              </div>
             </div>
           )}
 
           <div className="durnius-info">
             <span className="durnius-trump">
-              Trump: <PlayingCard card={game.trumpCard} />
+              Trump <PlayingCard card={game.trumpCard} size="sm" />
             </span>
-            <span>Cards in deck: {game.deckCount}</span>
-            <span>
-              Turn: <strong>{game.players[game.currentAttacker]}</strong> →{" "}
+            <span className="durnius-deck">
+              <PlayingCard faceDown size="sm" />
+              {game.deckCount} in deck
+            </span>
+            <span className="durnius-turn">
+              <strong>{game.players[game.currentAttacker]}</strong>
+              <span className="turn-arrow" aria-hidden="true">
+                →
+              </span>
               <strong>{game.players[game.currentDefender]}</strong>
             </span>
           </div>
 
-          <div className="durnius-players">
+          <div className="players-strip">
             {game.players.map((name, index) => (
               <div
                 key={index}
-                className={`durnius-player${
-                  index === game.you ? " durnius-player-you" : ""
+                className={`player-chip${
+                  index === game.you ? " player-chip-you" : ""
                 }`}
               >
                 <strong>
                   {name}
                   {index === game.you ? " (you)" : ""}
                 </strong>
-                <span>{game.cardCounts[index] ?? 0} cards</span>
-                {index === game.currentAttacker && <span className="badge">attacker</span>}
-                {index === game.currentDefender && <span className="badge">defender</span>}
+                <span className="muted">
+                  {game.cardCounts[index] ?? 0} cards
+                </span>
+                {index === game.currentAttacker && (
+                  <span className="badge badge-attack">attacker</span>
+                )}
+                {index === game.currentDefender && (
+                  <span className="badge badge-defend">defender</span>
+                )}
                 {game.finishedPlayers.includes(index) && (
-                  <span className="badge">#{game.playerPlacements[index]}</span>
+                  <span className="badge">
+                    #{game.playerPlacements[index]}
+                  </span>
                 )}
               </div>
             ))}
           </div>
 
-          {round && (
-            <p className="round-banner">
+          {round && winner === null && (
+            <div className="alert alert-info" role="status">
               {round.defenderTookCards
-                ? `${game.players[round.defender]} took ${round.cardsOnTable.length} ${
-                    round.cardsOnTable.length === 1 ? "card" : "cards"
-                  }.`
+                ? `${game.players[round.defender]} took ${
+                    round.cardsOnTable.length
+                  } ${round.cardsOnTable.length === 1 ? "card" : "cards"}.`
                 : `${game.players[round.defender]} beat the attack.`}{" "}
               Next attacker: {game.players[round.nextAttacker]}.
-            </p>
+            </div>
           )}
 
-          <h2>Table</h2>
-          <div className="durnius-table">
+          <div className="felt durnius-table">
             {table.length === 0 ? (
               <p className="table-hint">No cards on the table.</p>
             ) : (
               table.map((played, index) => (
                 <div
-                  className="durnius-pair"
+                  className="pair"
                   key={`${cardKey(played.attackCard)}-${index}`}
                 >
-                  <span className="durnius-pair-owner">
-                    {game.players[played.playerIndex] ?? "Player"}
-                  </span>
                   <button
                     type="button"
-                    className={`card-button${
+                    className={`card-btn pair-attack${
                       played.defenseCard === null &&
                       sameCard(played.attackCard, selectedAttack)
                         ? " selected"
                         : ""
                     }`}
-                    disabled={!isDefender || played.defenseCard !== null || actionsDisabled}
+                    disabled={
+                      !isDefender ||
+                      played.defenseCard !== null ||
+                      actionsDisabled
+                    }
                     onClick={() => setSelectedAttack(played.attackCard)}
                     aria-label={`Target ${played.attackCard.value} of ${played.attackCard.suit}`}
                   >
                     <PlayingCard card={played.attackCard} />
                   </button>
                   {played.defenseCard ? (
-                    <>
-                      <span className="durnius-arrow">←</span>
+                    <span className="pair-defense">
                       <PlayingCard card={played.defenseCard} />
-                    </>
+                    </span>
                   ) : (
-                    <span className="durnius-undefended">undefended</span>
+                    <span className="pair-slot" aria-hidden="true" />
                   )}
+                  <span className="pair-owner">
+                    {game.players[played.playerIndex] ?? "Player"}
+                  </span>
                 </div>
               ))
             )}
           </div>
 
-          <h2>Your hand</h2>
-          <div className="durnius-hand">
-            {sortHand(game.hand).map((card) => (
+          <div className="hand">
+            {sortHand(game.hand, game.trumpSuit).map((card) => (
               <button
                 type="button"
                 key={cardKey(card)}
-                className={`card-button${
+                className={`card-btn${
                   sameCard(card, selectedCard) ? " selected" : ""
                 }`}
                 aria-pressed={sameCard(card, selectedCard)}
@@ -338,16 +334,21 @@ export default function Durnius() {
                 <PlayingCard card={card} />
               </button>
             ))}
-            {game.hand.length === 0 && <p className="table-hint">Your hand is empty.</p>}
+            {game.hand.length === 0 && (
+              <p className="table-hint">Your hand is empty.</p>
+            )}
           </div>
 
-          <div className="durnius-actions">
+          <div className="action-bar">
             {isAttacker && (
               <button
                 type="button"
+                className="btn btn-primary"
                 disabled={!canAttack || actionsDisabled}
                 onClick={() => {
-                  if (selectedCard) void send({ type: "attack", card: selectedCard });
+                  if (selectedCard) {
+                    void send({ type: "attack", card: selectedCard });
+                  }
                 }}
               >
                 {waitingForAttack ? "Attack" : "Add attack"}
@@ -356,6 +357,7 @@ export default function Durnius() {
             {isAttacker && table.length > 0 && (
               <button
                 type="button"
+                className="btn"
                 disabled={!canPass || actionsDisabled}
                 onClick={() => {
                   setPassed(true);
@@ -368,6 +370,7 @@ export default function Durnius() {
             {isDefender && (
               <button
                 type="button"
+                className="btn btn-primary"
                 disabled={!canDefend || actionsDisabled}
                 onClick={() => {
                   if (selectedCard && selectedAttackEntry) {
@@ -385,9 +388,12 @@ export default function Durnius() {
             {isDefender && (
               <button
                 type="button"
+                className="btn"
                 disabled={!canTransfer || actionsDisabled}
                 onClick={() => {
-                  if (selectedCard) void send({ type: "transfer", card: selectedCard });
+                  if (selectedCard) {
+                    void send({ type: "transfer", card: selectedCard });
+                  }
                 }}
               >
                 Transfer
@@ -396,6 +402,7 @@ export default function Durnius() {
             {isDefender && (
               <button
                 type="button"
+                className="btn"
                 disabled={table.length === 0 || actionsDisabled}
                 onClick={() => void send({ type: "take" })}
               >
@@ -404,18 +411,23 @@ export default function Durnius() {
             )}
             <button
               type="button"
-              onClick={clearSelection}
+              className="btn btn-ghost"
+              onClick={() => {
+                setSelectedCard(null);
+                setSelectedAttack(null);
+              }}
               disabled={selectedCard === null && selectedAttack === null}
             >
               Clear selection
             </button>
           </div>
 
-          <p>{status}</p>
-          <p className="durnius-hint">
-            Beat a card with a higher card of the same suit, or any trump against a
-            non-trump. Added attacks must match a rank already on the table; you can
-            transfer an attack before any defense is played.
+          <p className="status">{status}</p>
+          <p className="hint">
+            Beat a card with a higher card of the same suit, or any trump
+            against a non-trump. Added attacks must match a rank already on
+            the table; you can transfer an attack before any defense is
+            played. Leaving the page forfeits the match.
           </p>
         </div>
       )}

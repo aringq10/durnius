@@ -8,7 +8,7 @@ export default function FormErrors({ errors }: FormErrorsProps) {
   }
 
   return (
-    <div className="error" role="alert">
+    <div className="alert alert-error" role="alert">
       {errors.length === 1 ? (
         errors[0]
       ) : (
