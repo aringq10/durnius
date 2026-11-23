@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Run from the script's directory so the solution, tool manifest and output
+# paths resolve regardless of where the script is invoked from.
+cd "$(dirname "${BASH_SOURCE[0]}")"
+
+results_dir="TestResults"
+report_dir="$results_dir/CoverageReport"
+
+# Start clean so coverage from previous runs isn't merged into this report.
+rm -rf "$results_dir"
+
+dotnet tool restore
+dotnet test Durnius.slnx \
+  --collect:"XPlat Code Coverage;Format=cobertura" \
+  --results-directory "$results_dir" \
+  --nologo
+
+dotnet tool run reportgenerator \
+  "-reports:$results_dir/**/coverage.cobertura.xml" \
+  "-targetdir:$report_dir" \
+  "-reporttypes:Html" \
+  "-assemblyfilters:-*Tests*"
+
+echo "Coverage report: $report_dir/index.html"
+
+if [[ "${1:-}" == "--open" ]]; then
+  if command -v xdg-open >/dev/null 2>&1; then
+    xdg-open "$report_dir/index.html"
+  elif command -v open >/dev/null 2>&1; then
+    open "$report_dir/index.html"
+  else
+    echo "No opener found; open the report path above manually." >&2
+  fi
+fi

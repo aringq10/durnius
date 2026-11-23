@@ -27,3 +27,14 @@ Or use the bash script:
 # development
 ./dev up --build
 ```
+
+## Test coverage
+
+`./coverage` runs the tests with the Coverlet data collector and renders the
+resulting Cobertura data as a browsable HTML report (ReportGenerator is pinned
+as a local .NET tool in `dotnet-tools.json`):
+
+``` bash
+./coverage          # writes TestResults/CoverageReport/index.html
+./coverage --open   # ...and opens it in the default browser
+```
