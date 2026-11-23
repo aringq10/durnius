@@ -37,10 +37,15 @@ public class KarasMatch : ICreatableMatch<KarasMatch>
     private readonly MatchPlayer _player2;
     private bool _ended = false;
 
-    private KarasMatch(MatchPlayer player1, MatchPlayer player2)
+    private KarasMatch(MatchPlayer player1, MatchPlayer player2) : this(player1, player2, new GameEngine())
+    {
+    }
+
+    internal KarasMatch(MatchPlayer player1, MatchPlayer player2, GameEngine game)
     {
         _player1 = player1;
         _player2 = player2;
+        _game = game;
     }
 
     public static int Capacity => 2;
