@@ -85,6 +85,17 @@ export function postJson<T>(
     body: JSON.stringify(data),
   }).then((response) => handle<T>(response));
 }
+export function putJson<T>(
+  path: string,
+  data: unknown,
+  token?: string | null
+): Promise<T> {
+  return fetch(`${API_URL}${path}`, {
+    method: "PUT",
+    headers: authHeaders(token),
+    body: JSON.stringify(data),
+  }).then((response) => handle<T>(response));
+}
 
 export function getJson<T>(path: string, token?: string | null): Promise<T> {
   const headers: Record<string, string> = {};

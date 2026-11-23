@@ -393,3 +393,43 @@ button {
   line-height: 1.5;
   max-width: 48rem;
 }
+
+
+.account-card {
+  max-width: 460px;
+}
+
+.account-card h1 {
+  margin-bottom: 0.35rem;
+}
+
+.account-card > p {
+  color: #6c757d;
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+}
+
+.account-card .field label {
+  display: inline-block;
+  margin-bottom: 0.35rem;
+}
+
+.account-card .field input {
+  width: 100%;
+  padding: 0.6rem 0.7rem;
+  box-sizing: border-box;
+}
+
+.account-back {
+  margin-bottom: 1rem;
+}
+
+.success-message {
+  margin: 0 0 1rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #a3cfbb;
+  border-radius: 6px;
+  background: #d1e7dd;
+  color: #0f5132;
+  font-size: 0.9rem;
+}
