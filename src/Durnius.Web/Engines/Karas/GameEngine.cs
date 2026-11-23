@@ -47,6 +47,28 @@ public class GameEngine
         }
     }
 
+    // Deterministic hands for tests, mirroring the internal constructor on the
+    // Durnius engine. The public constructor still deals from a shuffled deck.
+    internal GameEngine(
+        IReadOnlyList<Card> player1Cards,
+        IReadOnlyList<Card> player2Cards,
+        Card? player1Drawn = null,
+        Card? player2Drawn = null)
+    {
+        foreach (var card in player1Cards)
+        {
+            _player1.AddCard(card);
+        }
+
+        foreach (var card in player2Cards)
+        {
+            _player2.AddCard(card);
+        }
+
+        _player1Drawn = player1Drawn;
+        _player2Drawn = player2Drawn;
+    }
+
     public CardCount CardCounts()
     {
         return new CardCount(_player1.CardCount(), _player2.CardCount());
