@@ -1,6 +1,6 @@
+using Durnius.Web.Common;
 using Durnius.Web.Data;
 using Microsoft.EntityFrameworkCore;
-using Durnius.Web.Common;
 
 namespace Durnius.Web.Features.Account;
 
@@ -77,7 +77,7 @@ public class AccountService(AppDbContext db) : IAccountService
 
         return ServiceResult<User, AccountError>.Success(user);
     }
-    
+
     public async Task<ServiceResult<bool, AccountError>> ChangePasswordAsync(
         int userId, string? currentPassword, string? newPassword)
     {
@@ -89,7 +89,7 @@ public class AccountService(AppDbContext db) : IAccountService
         }
         else if (currentPassword.Length > PasswordMaxLength)
         {
-           errors.Add($"Current password must be at most {PasswordMaxLength} characters.");
+            errors.Add($"Current password must be at most {PasswordMaxLength} characters.");
         }
 
         if (string.IsNullOrEmpty(newPassword))
@@ -121,7 +121,7 @@ public class AccountService(AppDbContext db) : IAccountService
         }
 
         if (BCrypt.Net.BCrypt.Verify(newPassword!, user.PasswordHash))
-       {
+        {
             return ServiceResult<bool, AccountError>.Failure(
                 AccountError.ValidationFailed,
                 ["The new password must be different from the current password."]);

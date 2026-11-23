@@ -1,8 +1,8 @@
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using Durnius.Web.Common;
 using Durnius.Web.Data;
-using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Durnius.Web.Features.Account;
 

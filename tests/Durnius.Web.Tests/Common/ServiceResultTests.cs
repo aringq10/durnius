@@ -1,7 +1,7 @@
 using Durnius.Web.Common;
 using Xunit;
 
-namespace Durnius.Web.Tests;
+namespace Durnius.Web.Tests.Common;
 
 public sealed class ServiceResultTests
 {
