@@ -87,6 +87,20 @@ public class AccountController(
         return account is null ? NotFound() : Ok(account);
     }
 
+    [HttpGet("/api/account/matches")]
+    [Authorize]
+    public async Task<IActionResult> MatchHistory(CancellationToken cancellationToken)
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!int.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized();
+        }
+
+        var entries = await _accountService.GetMatchHistoryAsync(userId, cancellationToken);
+        return Ok(entries);
+    }
+
     private IActionResult ToActionResult(ServiceResult<User, AccountError> result)
     {
         return result.Match<IActionResult>(
